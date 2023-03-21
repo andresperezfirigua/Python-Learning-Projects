@@ -1,6 +1,7 @@
 from Dict_Data import MENU
 from Dict_Data import resources
 
+print("Hello Andres")
 
 def print_report(machine_money):
     print(f"Water: {resources['water']}\nMilk: {resources['milk']}\nCoffee: {resources['coffee']}\nMoney: {machine_money}")
