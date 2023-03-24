@@ -224,6 +224,5 @@ $buttonRegistro.Add_Click({
         }
     })
 $form.Controls.Add($buttonRegistro)
-
 # Show the form
 $form.ShowDialog() | Out-Null
