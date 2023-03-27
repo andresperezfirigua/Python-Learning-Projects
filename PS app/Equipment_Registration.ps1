@@ -20,8 +20,8 @@ public static void Hide()
 [ConsoleApp.Window]::Hide()
 
 # Load the Excel file into a variable
-$global:InputFilePath = "C:\Users\andresfelipe.perez\Downloads\alm_hardware.xlsx"
-$global:OutputFilePath = "C:\Users\andresfelipe.perez\Downloads\Minuta_computadores.xlsx"
+$global:InputFilePath = "$($env:USERPROFILE)\Downloads\alm_hardware.xlsx"
+$global:OutputFilePath = "$($env:USERPROFILE)\Downloads\Minuta_computadores.xlsx"
 # $inputFilePath = "C:\Users\Peter.Cadwell\Downloads\alm_hardware.xlsx"
 # $outputFilePath = "C:\Users\Peter.Cadwell\Downloads\Minuta_computadores.xlsx"
 
