@@ -20,10 +20,11 @@ public static void Hide()
 [ConsoleApp.Window]::Hide()
 
 # Load the Excel file into a variable
-$global:InputFilePath = "$($env:USERPROFILE)\Downloads\alm_hardware.xlsx"
-$global:OutputFilePath = "$($env:USERPROFILE)\Downloads\Minuta_computadores.xlsx"
-# $inputFilePath = "C:\Users\Peter.Cadwell\Downloads\alm_hardware.xlsx"
-# $outputFilePath = "C:\Users\Peter.Cadwell\Downloads\Minuta_computadores.xlsx"
+$global:InputFilePath = "$($env:USERPROFILE)\Downloads\Equipment_Registration_App\alm_hardware.xlsx"
+$global:OutputFilePath = "$($env:USERPROFILE)\Downloads\Equipment_Registration_App\Minuta_computadores.xlsx"
+
+#$global:InputFilePath = "$($env:USERPROFILE)\PycharmProjects\Equipment_Registration_App\Equipment_Registration_App\alm_hardware.xlsx"
+#$global:OutputFilePath = "$($env:USERPROFILE)\PycharmProjects\Equipment_Registration_App\Equipment_Registration_App\Minuta_computadores.xlsx"
 
 $global:InputExcelApp = New-Object -ComObject Excel.Application
 $global:InputWorkbook = $global:InputExcelApp.Workbooks.Open($inputFilePath)
@@ -220,8 +221,15 @@ function Find_Computer($searchValue) {
 }
 
 function Add_Record_To_File ($foundItem) {
+    $outputExcelAppProcess = Get-Process | Where-Object {$_.MainWindowTitle -like "*Minuta_computadores*"}
+    
+    while ($outputExcelAppProcess) {
+        [System.Windows.Forms.MessageBox]::Show("Cierre el archivo Minuta_computadores.xlsx para poder registrar el equipo", "Error", "OK", "Error")
+        $outputExcelAppProcess = Get-Process | Where-Object {$_.MainWindowTitle -like "*Minuta_computadores*"}
+    }
+
     $outputExcelApp = New-Object -ComObject Excel.Application
-    $outputWorkbook = $outputExcelApp.Workbooks.Open($global:OutputFilePath)
+    $outputWorkbook = $outputExcelApp.Workbooks.Open($global:OutputFilePath, 3)
     $outputWorksheet = $outputWorkbook.Sheets.Item(1)
 
     # Get the last row of data in the output worksheet
@@ -342,10 +350,7 @@ function Record_Equipment {
 
 # Event handler for FormClosing event
 $handler_FormClosing = {
-    # Save and close the output workbook
-    $global:InputWorkbook.Save()
     $global:InputWorkbook.Close()
-
     # Quit Excel and release the object
     $global:InputExcelApp.Quit()
     
