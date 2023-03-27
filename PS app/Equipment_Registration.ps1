@@ -19,13 +19,23 @@ public static void Hide()
 }'
 [ConsoleApp.Window]::Hide()
 
+# Load the Excel file into a variable
+$global:InputFilePath = "C:\Users\andresfelipe.perez\Downloads\alm_hardware.xlsx"
+$global:OutputFilePath = "C:\Users\andresfelipe.perez\Downloads\Minuta_computadores.xlsx"
+# $inputFilePath = "C:\Users\Peter.Cadwell\Downloads\alm_hardware.xlsx"
+# $outputFilePath = "C:\Users\Peter.Cadwell\Downloads\Minuta_computadores.xlsx"
+
+$global:InputExcelApp = New-Object -ComObject Excel.Application
+$global:InputWorkbook = $global:InputExcelApp.Workbooks.Open($inputFilePath)
+
+
 function Clean_Controls {
     $textboxSearch.Text = ""
     $radioIngreso.Checked = $false
     $radioRetiro.Checked = $false
 }
 
-function Add_Non_Asurion_Device ($outputFilePath) {
+function Add_Non_Asurion_Device {
     $date = Get-Date
     $dateString = $date.ToString("yyyy-MM-dd HH:mm:ss")
 
@@ -70,6 +80,7 @@ function Add_Non_Asurion_Device ($outputFilePath) {
     $textboxSerial.Location = New-Object System.Drawing.Point(150, 20)
     $textboxSerial.Size = New-Object System.Drawing.Size(200, 20)
     $form.Controls.Add($textboxSerial)
+    $textboxSerial.Text = $textboxSearch.Text
 
     $labelModel = New-Object System.Windows.Forms.Label
     $labelModel.Location = New-Object System.Drawing.Point(20, 60)
@@ -149,7 +160,7 @@ function Add_Non_Asurion_Device ($outputFilePath) {
             }
             $form.Close()
             $form.Dispose()
-            Add_Record_To_File $outputFilePath $newComputer
+            Add_Record_To_File $newComputer
         }
     })
     $form.Controls.Add($buttonAddDevice)
@@ -157,11 +168,10 @@ function Add_Non_Asurion_Device ($outputFilePath) {
     $form.ShowDialog() | Out-Null
 }
 
-function Find_Computer($inputFilePath, $searchValue) {
+function Find_Computer($searchValue) {
     $foundItem = @()
-    $inputFile = New-Object -ComObject Excel.Application
-    $workbook = $inputFile.Workbooks.Open($inputFilePath)
-    $worksheet = $workbook.Sheets.Item(1)
+    
+    $worksheet = $global:InputWorkbook.Sheets.Item(1)
     $lastRow = $worksheet.UsedRange.Rows.Count
 
     $date = Get-Date
@@ -206,16 +216,12 @@ function Find_Computer($inputFilePath, $searchValue) {
             break
         }
     }
-    
-    # Close the input workbook and Excel application
-    $workbook.Close()
-    $inputFile.Quit()
     return $foundItem
 }
 
-function Add_Record_To_File ($outputFilePath, $foundItem) {
-    $outputFile = New-Object -ComObject Excel.Application
-    $outputWorkbook = $outputFile.Workbooks.Open($outputFilePath)
+function Add_Record_To_File ($foundItem) {
+    $outputExcelApp = New-Object -ComObject Excel.Application
+    $outputWorkbook = $outputExcelApp.Workbooks.Open($global:OutputFilePath)
     $outputWorksheet = $outputWorkbook.Sheets.Item(1)
 
     # Get the last row of data in the output worksheet
@@ -226,10 +232,12 @@ function Add_Record_To_File ($outputFilePath, $foundItem) {
         $outputWorksheet.Cells.Item($outputLastRow + 1, $j).Value2 = $foundItem[$j-1]
     }
 
-    # Save and close the output workbook
     $outputWorkbook.Save()
     $outputWorkbook.Close()
-    $outputFile.Quit()
+
+    $outputExcelApp.Quit()
+
+    [System.Runtime.Interopservices.Marshal]::ReleaseComObject($outputExcelApp) | Out-Null
 }
 
 function Get_Different_Bearer ($foundItem) {
@@ -283,11 +291,6 @@ function Get_Different_Bearer ($foundItem) {
 }
 
 function Record_Equipment {
-    # Load the Excel file into a variable
-    $inputFilePath = "C:\Users\andresfelipe.perez\Downloads\alm_hardware.xlsx"
-    $outputFilePath = "C:\Users\andresfelipe.perez\Downloads\Minuta_computadores.xlsx"
-    # $inputFilePath = "C:\Users\Peter.Cadwell\Downloads\alm_hardware.xlsx"
-    # $outputFilePath = "C:\Users\Peter.Cadwell\Downloads\Minuta_computadores.xlsx"
     if ([string]::IsNullOrWhiteSpace($textboxSearch.Text)) {
         [System.Windows.Forms.MessageBox]::Show("Ingrese un equipo para buscar", "Error", "OK", "Error")
         return
@@ -295,7 +298,7 @@ function Record_Equipment {
     $searchToUpper = $textboxSearch.Text.ToUpper()
     $searchValue = $searchToUpper
 
-    $foundItem = Find_Computer $inputFilePath $searchValue
+    $foundItem = Find_Computer $searchValue
 
     if ($null -ne $foundItem){
         if (-not ($foundItem[2] -eq "No asignado")) {
@@ -303,7 +306,7 @@ function Record_Equipment {
             $dialogResult = [System.Windows.Forms.MessageBox]::Show("Es $bearer quien tiene el equipo a registrar?", "Confirmation", "YesNoCancel", "Question")
 
             if ($dialogResult -eq "Yes") {
-                Add_Record_To_File $outputFilePath $foundItem
+                Add_Record_To_File $foundItem
                 # Display a message to the user indicating that the data was added successfully
                 [System.Windows.Forms.MessageBox]::Show("Registro agregado exitosamente.", "", "OK", "Information")
                 Clean_Controls
@@ -311,27 +314,42 @@ function Record_Equipment {
             elseif ($dialogResult -eq "No") {
                 $modifiedFoundItem = Get_Different_Bearer $foundItem
 
-                Add_Record_To_File $outputFilePath $modifiedFoundItem
+                Add_Record_To_File $modifiedFoundItem
                 # Display a message to the user indicating that the data was added successfully
                 [System.Windows.Forms.MessageBox]::Show("Registro agregado exitosamente.", "", "OK", "Information")
+                Clean_Controls
+            }
+            elseif ($dialogResult -eq "Cancel") {
                 Clean_Controls
             }
         } else {
             [System.Windows.Forms.MessageBox]::Show([System.Text.RegularExpressions.Regex]::Unescape("Este equipo a\u00FAn no est\u00E1 asignado en inventario"), "Error", "OK", "Error")
             $modifiedFoundItem = Get_Different_Bearer $foundItem
 
-            Add_Record_To_File $outputFilePath $modifiedFoundItem
+            Add_Record_To_File $modifiedFoundItem
             # Display a message to the user indicating that the data was added successfully
             [System.Windows.Forms.MessageBox]::Show("Registro agregado exitosamente.", "", "OK", "Information")
             Clean_Controls
         }
     } else {
         [System.Windows.Forms.MessageBox]::Show("El equipo no fue encontrado. Posibles razones:`n`n- Puede que no sea un PC o una laptop`n- Puede ser propiedad de Asurion pero en otro pais`n- Puede no ser propiedad de Asurion`n`n De clic en OK para registrarlo.", "Error", "OK", "Error")
-        Add_Non_Asurion_Device $outputFilePath
+        Add_Non_Asurion_Device
         # Display a message to the user indicating that the data was added successfully
         [System.Windows.Forms.MessageBox]::Show("Registro agregado exitosamente.", "", "OK", "Information")
         Clean_Controls
     }
+}
+
+# Event handler for FormClosing event
+$handler_FormClosing = {
+    # Save and close the output workbook
+    $global:InputWorkbook.Save()
+    $global:InputWorkbook.Close()
+
+    # Quit Excel and release the object
+    $global:InputExcelApp.Quit()
+    
+    [System.Runtime.Interopservices.Marshal]::ReleaseComObject($global:InputExcelApp) | Out-Null
 }
 
 # Create a form
@@ -371,6 +389,7 @@ $buttonRegistro = New-Object System.Windows.Forms.Button
 $buttonRegistro.Location = New-Object System.Drawing.Point(25, 140)
 $buttonRegistro.Size = New-Object System.Drawing.Size(200, 30)
 $buttonRegistro.Text = "Registrar"
+$form.add_FormClosing($handler_FormClosing)
 $buttonRegistro.Add_Click({
         if ($radioIngreso.Checked -or $radioRetiro.Checked) {
             Record_Equipment
@@ -380,5 +399,9 @@ $buttonRegistro.Add_Click({
         }
     })
 $form.Controls.Add($buttonRegistro)
+
 # Show the form
 $form.ShowDialog() | Out-Null
+
+Unregister-Event -SourceIdentifier FormClosing
+[System.Runtime.Interopservices.Marshal]::ReleaseComObject($global:InputExcelApp) | Out-Null
