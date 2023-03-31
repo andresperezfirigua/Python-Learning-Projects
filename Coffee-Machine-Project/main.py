@@ -44,7 +44,7 @@ def make_coffee(drink):
 
 
 def print_report(machine_money):
-    print(f"Water: {resources['water']}\nMilk: {resources['milk']}\nCoffee: {resources['coffee']}\nMoney: ${machine_money}")
+    print(f"Water: {resources['water']}ml\nMilk: {resources['milk']}ml\nCoffee: {resources['coffee']}g\nMoney: ${machine_money}")
 
 
 def turn_on():

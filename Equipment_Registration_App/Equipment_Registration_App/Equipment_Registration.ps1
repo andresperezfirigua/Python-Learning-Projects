@@ -19,16 +19,11 @@ public static void Hide()
 }'
 [ConsoleApp.Window]::Hide()
 
-# Load the Excel file into a variable
-$global:InputFilePath = "$($env:USERPROFILE)\Downloads\Equipment_Registration_App\alm_hardware.xlsx"
-$global:OutputFilePath = "$($env:USERPROFILE)\Downloads\Equipment_Registration_App\Minuta_computadores.xlsx"
+$global:InputFilePath = "C:\Equipment_Registration_App\alm_hardware.xlsx"
+$global:OutputFilePath = "C:\Equipment_Registration_App\Minuta_computadores.xlsx"
 
 #$global:InputFilePath = "$($env:USERPROFILE)\PycharmProjects\Equipment_Registration_App\Equipment_Registration_App\alm_hardware.xlsx"
 #$global:OutputFilePath = "$($env:USERPROFILE)\PycharmProjects\Equipment_Registration_App\Equipment_Registration_App\Minuta_computadores.xlsx"
-
-$global:InputExcelApp = New-Object -ComObject Excel.Application
-$global:InputWorkbook = $global:InputExcelApp.Workbooks.Open($inputFilePath)
-
 
 function Clean_Controls {
     $textboxSearch.Text = ""
@@ -232,6 +227,8 @@ function Add_Record_To_File ($foundItem) {
     $outputWorkbook = $outputExcelApp.Workbooks.Open($global:OutputFilePath, 3)
     $outputWorksheet = $outputWorkbook.Sheets.Item(1)
 
+    $outputWorksheet.Unprotect("1478")
+
     # Get the last row of data in the output worksheet
     $outputLastRow = $outputWorksheet.UsedRange.Rows.Count
 
@@ -239,6 +236,13 @@ function Add_Record_To_File ($foundItem) {
     for ($j = 1; $j -le $foundItem.Length; $j++) {
         $outputWorksheet.Cells.Item($outputLastRow + 1, $j).Value2 = $foundItem[$j-1]
     }
+
+    # Lock the new row
+    $newRowRange = $outputWorksheet.Range("A$($outputLastRow + 1):J$($outputLastRow + 1)")
+    $newRowRange.Locked = $True
+
+    # Protect the workbook again
+    $outputWorksheet.Protect("1478")
 
     $outputWorkbook.Save()
     $outputWorkbook.Close()
@@ -348,65 +352,74 @@ function Record_Equipment {
     }
 }
 
-# Event handler for FormClosing event
-$handler_FormClosing = {
-    $global:InputWorkbook.Close()
-    # Quit Excel and release the object
-    $global:InputExcelApp.Quit()
-    
+# Load the Excel file into a variable
+if ((Test-Path $global:InputFilePath) -and (Test-Path $global:OutputFilePath)) {
+    $global:InputExcelApp = New-Object -ComObject Excel.Application
+    $global:InputWorkbook = $global:InputExcelApp.Workbooks.Open($inputFilePath)
+
+    # Event handler for FormClosing event
+    $handler_FormClosing = {
+        $global:InputWorkbook.Close()
+        # Quit Excel and release the object
+        $global:InputExcelApp.Quit()
+        
+        [System.Runtime.Interopservices.Marshal]::ReleaseComObject($global:InputExcelApp) | Out-Null
+    }
+
+    # Create a form
+    $form = New-Object System.Windows.Forms.Form
+    $form.Text = "Registration"
+    $form.Size = New-Object System.Drawing.Size(250, 225)
+    $form.StartPosition = "CenterScreen"
+    $form.MaximizeBox = $false
+    $form.FormBorderStyle = [System.Windows.Forms.FormBorderStyle]::FixedSingle
+
+    # Create a label and text box for search value
+    $labelSearch = New-Object System.Windows.Forms.Label
+    $labelSearch.Location = New-Object System.Drawing.Point(25, 20)
+    $labelSearch.Size = New-Object System.Drawing.Size(200, 20)
+    $labelSearch.Text = "Ingrese el equipo a buscar:"
+    $form.Controls.Add($labelSearch)
+
+    $textboxSearch = New-Object System.Windows.Forms.TextBox
+    $textboxSearch.Location = New-Object System.Drawing.Point(25, 40)
+    $textboxSearch.Size = New-Object System.Drawing.Size(200, 20)
+    $form.Controls.Add($textboxSearch)
+
+    $radioIngreso = New-Object System.Windows.Forms.RadioButton
+    $radioIngreso.Location = New-Object System.Drawing.Point(25, 70)
+    $radioIngreso.Size = New-Object System.Drawing.Size(200, 30)
+    $radioIngreso.Text = "Ingreso de equipo"
+    $form.Controls.Add($radioIngreso)
+
+    $radioRetiro = New-Object System.Windows.Forms.RadioButton
+    $radioRetiro.Location = New-Object System.Drawing.Point(25, 100)
+    $radioRetiro.Size = New-Object System.Drawing.Size(200, 30)
+    $radioRetiro.Text = "Retiro de equipo"
+    $form.Controls.Add($radioRetiro)
+
+    # Create a button for Registrar equipo
+    $buttonRegistro = New-Object System.Windows.Forms.Button
+    $buttonRegistro.Location = New-Object System.Drawing.Point(25, 140)
+    $buttonRegistro.Size = New-Object System.Drawing.Size(200, 30)
+    $buttonRegistro.Text = "Registrar"
+    $form.add_FormClosing($handler_FormClosing)
+    $buttonRegistro.Add_Click({
+            if ($radioIngreso.Checked -or $radioRetiro.Checked) {
+                Record_Equipment
+            }
+            else {
+                [System.Windows.Forms.MessageBox]::Show("Indique si el equipo ingresa o sale del piso", "Error", "OK", "Error")
+            }
+        })
+    $form.Controls.Add($buttonRegistro)
+
+    # Show the form
+    $form.ShowDialog() | Out-Null
+
+    Unregister-Event -SourceIdentifier FormClosing
     [System.Runtime.Interopservices.Marshal]::ReleaseComObject($global:InputExcelApp) | Out-Null
+
+} else {
+    [System.Windows.Forms.MessageBox]::Show([System.Text.RegularExpressions.Regex]::Unescape("No se encontr\u00F3 archivo de lectura o escritura"), "Error", "OK", "Error")
 }
-
-# Create a form
-$form = New-Object System.Windows.Forms.Form
-$form.Text = "Registration"
-$form.Size = New-Object System.Drawing.Size(250, 225)
-$form.StartPosition = "CenterScreen"
-$form.MaximizeBox = $false
-$form.FormBorderStyle = [System.Windows.Forms.FormBorderStyle]::FixedSingle
-
-# Create a label and text box for search value
-$labelSearch = New-Object System.Windows.Forms.Label
-$labelSearch.Location = New-Object System.Drawing.Point(25, 20)
-$labelSearch.Size = New-Object System.Drawing.Size(200, 20)
-$labelSearch.Text = "Ingrese el equipo a buscar:"
-$form.Controls.Add($labelSearch)
-
-$textboxSearch = New-Object System.Windows.Forms.TextBox
-$textboxSearch.Location = New-Object System.Drawing.Point(25, 40)
-$textboxSearch.Size = New-Object System.Drawing.Size(200, 20)
-$form.Controls.Add($textboxSearch)
-
-$radioIngreso = New-Object System.Windows.Forms.RadioButton
-$radioIngreso.Location = New-Object System.Drawing.Point(25, 70)
-$radioIngreso.Size = New-Object System.Drawing.Size(200, 30)
-$radioIngreso.Text = "Ingreso de equipo"
-$form.Controls.Add($radioIngreso)
-
-$radioRetiro = New-Object System.Windows.Forms.RadioButton
-$radioRetiro.Location = New-Object System.Drawing.Point(25, 100)
-$radioRetiro.Size = New-Object System.Drawing.Size(200, 30)
-$radioRetiro.Text = "Retiro de equipo"
-$form.Controls.Add($radioRetiro)
-
-# Create a button for Registrar equipo
-$buttonRegistro = New-Object System.Windows.Forms.Button
-$buttonRegistro.Location = New-Object System.Drawing.Point(25, 140)
-$buttonRegistro.Size = New-Object System.Drawing.Size(200, 30)
-$buttonRegistro.Text = "Registrar"
-$form.add_FormClosing($handler_FormClosing)
-$buttonRegistro.Add_Click({
-        if ($radioIngreso.Checked -or $radioRetiro.Checked) {
-            Record_Equipment
-        }
-        else {
-            [System.Windows.Forms.MessageBox]::Show("Indique si el equipo ingresa o sale del piso", "Error", "OK", "Error")
-        }
-    })
-$form.Controls.Add($buttonRegistro)
-
-# Show the form
-$form.ShowDialog() | Out-Null
-
-Unregister-Event -SourceIdentifier FormClosing
-[System.Runtime.Interopservices.Marshal]::ReleaseComObject($global:InputExcelApp) | Out-Null
