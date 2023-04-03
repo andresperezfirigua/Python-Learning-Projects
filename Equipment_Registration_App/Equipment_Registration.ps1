@@ -32,7 +32,8 @@ function Clean_Controls {
 }
 
 function Add_Non_Asurion_Device {
-    $date = Get-Date
+    $timezone = [System.TimeZoneInfo]::FindSystemTimeZoneById("SA Pacific Standard Time")
+    $date = [System.TimeZoneInfo]::ConvertTimeFromUtc((Get-Date).ToUniversalTime(), $timezone)
     $dateString = $date.ToString("yyyy-MM-dd HH:mm:ss")
 
     $tipoRegistro = ""
@@ -170,7 +171,8 @@ function Find_Computer($searchValue) {
     $worksheet = $global:InputWorkbook.Sheets.Item(1)
     $lastRow = $worksheet.UsedRange.Rows.Count
 
-    $date = Get-Date
+    $timezone = [System.TimeZoneInfo]::FindSystemTimeZoneById("SA Pacific Standard Time")
+    $date = [System.TimeZoneInfo]::ConvertTimeFromUtc((Get-Date).ToUniversalTime(), $timezone)
     $dateString = $date.ToString("yyyy-MM-dd HH:mm:ss")
 
     $tipoRegistro = ""
@@ -216,11 +218,11 @@ function Find_Computer($searchValue) {
 }
 
 function Add_Record_To_File ($foundItem) {
-    $outputExcelAppProcess = Get-Process | Where-Object {$_.MainWindowTitle -like "*Minuta_computadores*"}
+    $outputExcelAppProcess = Get-Process excel -ErrorAction SilentlyContinue | Where-Object {$_.MainWindowTitle -like "*Minuta_computadores*"}
     
     while ($outputExcelAppProcess) {
         [System.Windows.Forms.MessageBox]::Show("Cierre el archivo Minuta_computadores.xlsx para poder registrar el equipo", "Error", "OK", "Error")
-        $outputExcelAppProcess = Get-Process | Where-Object {$_.MainWindowTitle -like "*Minuta_computadores*"}
+        $outputExcelAppProcess = Get-Process excel -ErrorAction SilentlyContinue | Where-Object {$_.MainWindowTitle -like "*Minuta_computadores*"}
     }
 
     $outputExcelApp = New-Object -ComObject Excel.Application
@@ -249,7 +251,19 @@ function Add_Record_To_File ($foundItem) {
 
     $outputExcelApp.Quit()
 
+    [System.Runtime.Interopservices.Marshal]::ReleaseComObject($newRowRange) | Out-Null
+    [System.Runtime.Interopservices.Marshal]::ReleaseComObject($outputWorksheet) | Out-Null
+    [System.Runtime.Interopservices.Marshal]::ReleaseComObject($outputWorkbook) | Out-Null
     [System.Runtime.Interopservices.Marshal]::ReleaseComObject($outputExcelApp) | Out-Null
+
+    # Force garbage collection to release memory
+    [GC]::Collect()
+
+    # Wait for any pending Com invocations to complete before exiting
+    [System.Runtime.Interopservices.Marshal]::FinalReleaseComObject($newRowRange) | Out-Null
+    [System.Runtime.Interopservices.Marshal]::FinalReleaseComObject($outputWorksheet) | Out-Null
+    [System.Runtime.Interopservices.Marshal]::FinalReleaseComObject($outputWorkbook) | Out-Null
+    [System.Runtime.Interopservices.Marshal]::FinalReleaseComObject($outputExcelApp) | Out-Null
 }
 
 function Get_Different_Bearer ($foundItem) {
@@ -335,7 +349,7 @@ function Record_Equipment {
                 Clean_Controls
             }
         } else {
-            [System.Windows.Forms.MessageBox]::Show([System.Text.RegularExpressions.Regex]::Unescape("Este equipo a\u00FAn no est\u00E1 asignado en inventario"), "Error", "OK", "Error")
+            [System.Windows.Forms.MessageBox]::Show([System.Text.RegularExpressions.Regex]::Unescape("Este equipo a\u00FAn no est\u00E1 asignado en inventario. De clic en OK para registrarlo"), "Error", "OK", "Error")
             $modifiedFoundItem = Get_Different_Bearer $foundItem
 
             Add_Record_To_File $modifiedFoundItem
@@ -363,7 +377,15 @@ if ((Test-Path $global:InputFilePath) -and (Test-Path $global:OutputFilePath)) {
         # Quit Excel and release the object
         $global:InputExcelApp.Quit()
         
+        [System.Runtime.Interopservices.Marshal]::ReleaseComObject($global:InputWorkbook) | Out-Null
         [System.Runtime.Interopservices.Marshal]::ReleaseComObject($global:InputExcelApp) | Out-Null
+
+        # Force garbage collection to release memory
+        [GC]::Collect()
+
+        # Wait for any pending Com invocations to complete before exiting
+        [System.Runtime.Interopservices.Marshal]::FinalReleaseComObject($global:InputWorkbook) | Out-Null
+        [System.Runtime.Interopservices.Marshal]::FinalReleaseComObject($global:InputExcelApp) | Out-Null
     }
 
     # Create a form

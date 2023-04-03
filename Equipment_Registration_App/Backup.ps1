@@ -19,14 +19,11 @@ public static void Hide()
 }'
 [ConsoleApp.Window]::Hide()
 
-#$global:InputFilePath = "C:\Equipment_Registration_App\alm_hardware.xlsx"
-#$global:OutputFilePath = "C:\Equipment_Registration_App\Minuta_computadores.xlsx"
+$global:InputFilePath = "C:\Equipment_Registration_App\alm_hardware.xlsx"
+$global:OutputFilePath = "C:\Equipment_Registration_App\Minuta_computadores.xlsx"
 
-#$global:InputFilePath = "$($env:USERPROFILE)\PycharmProjects\Equipment_Registration_App\Equipment_Registration_App\alm_hardware.xlsx"
-#$global:OutputFilePath = "$($env:USERPROFILE)\PycharmProjects\Equipment_Registration_App\Equipment_Registration_App\Minuta_computadores.xlsx"
-
-$global:InputFilePath = "C:\Test App folder\alm_hardware.xlsx"
-$global:OutputFilePath = "C:\Test App folder\Minuta_computadores.xlsx"
+#$global:InputFilePath = "$($env:USERPROFILE)\PycharmProjects\Equipment_Registration_App\alm_hardware.xlsx"
+#$global:OutputFilePath = "$($env:USERPROFILE)\PycharmProjects\Equipment_Registration_App\Minuta_computadores.xlsx"
 
 function Clean_Controls {
     $textboxSearch.Text = ""
@@ -219,16 +216,18 @@ function Find_Computer($searchValue) {
 }
 
 function Add_Record_To_File ($foundItem) {
-    $outputExcelAppProcess = Get-Process | Where-Object {$_.MainWindowTitle -like "*Minuta_computadores*"}
+    $outputExcelAppProcess = Get-Process excel -ErrorAction SilentlyContinue | Where-Object {$_.MainWindowTitle -like "*Minuta_computadores*"}
     
     while ($outputExcelAppProcess) {
         [System.Windows.Forms.MessageBox]::Show("Cierre el archivo Minuta_computadores.xlsx para poder registrar el equipo", "Error", "OK", "Error")
-        $outputExcelAppProcess = Get-Process | Where-Object {$_.MainWindowTitle -like "*Minuta_computadores*"}
+        $outputExcelAppProcess = Get-Process excel -ErrorAction SilentlyContinue | Where-Object {$_.MainWindowTitle -like "*Minuta_computadores*"}
     }
 
     $outputExcelApp = New-Object -ComObject Excel.Application
     $outputWorkbook = $outputExcelApp.Workbooks.Open($global:OutputFilePath, 3)
     $outputWorksheet = $outputWorkbook.Sheets.Item(1)
+
+    $outputWorksheet.Unprotect("1478")
 
     # Get the last row of data in the output worksheet
     $outputLastRow = $outputWorksheet.UsedRange.Rows.Count
@@ -238,12 +237,31 @@ function Add_Record_To_File ($foundItem) {
         $outputWorksheet.Cells.Item($outputLastRow + 1, $j).Value2 = $foundItem[$j-1]
     }
 
+    # Lock the new row
+    $newRowRange = $outputWorksheet.Range("A$($outputLastRow + 1):J$($outputLastRow + 1)")
+    $newRowRange.Locked = $True
+
+    # Protect the workbook again
+    $outputWorksheet.Protect("1478")
+
     $outputWorkbook.Save()
     $outputWorkbook.Close()
 
     $outputExcelApp.Quit()
 
+    [System.Runtime.Interopservices.Marshal]::ReleaseComObject($newRowRange) | Out-Null
+    [System.Runtime.Interopservices.Marshal]::ReleaseComObject($outputWorksheet) | Out-Null
+    [System.Runtime.Interopservices.Marshal]::ReleaseComObject($outputWorkbook) | Out-Null
     [System.Runtime.Interopservices.Marshal]::ReleaseComObject($outputExcelApp) | Out-Null
+
+    # Force garbage collection to release memory
+    [GC]::Collect()
+
+    # Wait for any pending Com invocations to complete before exiting
+    [System.Runtime.Interopservices.Marshal]::FinalReleaseComObject($newRowRange) | Out-Null
+    [System.Runtime.Interopservices.Marshal]::FinalReleaseComObject($outputWorksheet) | Out-Null
+    [System.Runtime.Interopservices.Marshal]::FinalReleaseComObject($outputWorkbook) | Out-Null
+    [System.Runtime.Interopservices.Marshal]::FinalReleaseComObject($outputExcelApp) | Out-Null
 }
 
 function Get_Different_Bearer ($foundItem) {
@@ -329,7 +347,7 @@ function Record_Equipment {
                 Clean_Controls
             }
         } else {
-            [System.Windows.Forms.MessageBox]::Show([System.Text.RegularExpressions.Regex]::Unescape("Este equipo a\u00FAn no est\u00E1 asignado en inventario"), "Error", "OK", "Error")
+            [System.Windows.Forms.MessageBox]::Show([System.Text.RegularExpressions.Regex]::Unescape("Este equipo a\u00FAn no est\u00E1 asignado en inventario. De clic en OK para registrarlo"), "Error", "OK", "Error")
             $modifiedFoundItem = Get_Different_Bearer $foundItem
 
             Add_Record_To_File $modifiedFoundItem
