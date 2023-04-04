@@ -1,0 +1,6 @@
+- Copy and paste files under C:\
+- Create shortcuts for everyone's desktop
+- Rename shortcuts if needed
+- Change icon for app
+- Copy shortcuts to public and default desktops
+- Set permissions to folder (Apply only to folder), advanced sec settings, add rule to authenticated users, set Deny, Read & execute / List folder / Read
