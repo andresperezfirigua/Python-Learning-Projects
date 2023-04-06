@@ -19,11 +19,11 @@ public static void Hide()
 }'
 [ConsoleApp.Window]::Hide()
 
-$global:InputFilePath = "C:\Equipment_Registration_App\alm_hardware.xlsx"
-$global:OutputFilePath = "C:\Equipment_Registration_App\Minuta_computadores.xlsx"
+#$global:InputFilePath = "C:\Equipment_Registration_App\alm_hardware.xlsx"
+#$global:OutputFilePath = "C:\Equipment_Registration_App\Minuta_computadores.xlsx"
 
-#$global:InputFilePath = "$($env:USERPROFILE)\PycharmProjects\Equipment_Registration_App\alm_hardware.xlsx"
-#$global:OutputFilePath = "$($env:USERPROFILE)\PycharmProjects\Equipment_Registration_App\Minuta_computadores.xlsx"
+$global:InputFilePath = "$($env:USERPROFILE)\PycharmProjects\Equipment_Registration_App\alm_hardware.xlsx"
+$global:OutputFilePath = "$($env:USERPROFILE)\PycharmProjects\Equipment_Registration_App\Minuta_computadores.xlsx"
 
 function Clean_Controls {
     $textboxSearch.Text = ""
