@@ -19,11 +19,11 @@ public static void Hide()
 }'
 [ConsoleApp.Window]::Hide()
 
-#$global:InputFilePath = "C:\Equipment_Registration_App\alm_hardware.xlsx"
-#$global:OutputFilePath = "C:\Equipment_Registration_App\Minuta_computadores.xlsx"
+Import-Module -Name SQLite
 
-$global:InputFilePath = "$($env:USERPROFILE)\PycharmProjects\Equipment_Registration_App\alm_hardware.xlsx"
-$global:OutputFilePath = "$($env:USERPROFILE)\PycharmProjects\Equipment_Registration_App\Minuta_computadores.xlsx"
+#$global:databasePath = "C:\Equipment_Registration_App\alm_hardware.db"
+
+$global:databasePath = "$($env:USERPROFILE)\PycharmProjects\Equipment_Registration_App\Equipment_Registration_App\alm_hardware.db"
 
 function Clean_Controls {
     $textboxSearch.Text = ""
@@ -32,7 +32,8 @@ function Clean_Controls {
 }
 
 function Add_Non_Asurion_Device {
-    $date = Get-Date
+    $timezone = [System.TimeZoneInfo]::FindSystemTimeZoneById("SA Pacific Standard Time")
+    $date = [System.TimeZoneInfo]::ConvertTimeFromUtc((Get-Date).ToUniversalTime(), $timezone)
     $dateString = $date.ToString("yyyy-MM-dd HH:mm:ss")
 
     $tipoRegistro = ""
@@ -166,11 +167,9 @@ function Add_Non_Asurion_Device {
 
 function Find_Computer($searchValue) {
     $foundItem = @()
-    
-    $worksheet = $global:InputWorkbook.Sheets.Item(1)
-    $lastRow = $worksheet.UsedRange.Rows.Count
 
-    $date = Get-Date
+    $timezone = [System.TimeZoneInfo]::FindSystemTimeZoneById("SA Pacific Standard Time")
+    $date = [System.TimeZoneInfo]::ConvertTimeFromUtc((Get-Date).ToUniversalTime(), $timezone)
     $dateString = $date.ToString("yyyy-MM-dd HH:mm:ss")
 
     $tipoRegistro = ""
@@ -182,86 +181,124 @@ function Find_Computer($searchValue) {
         $tipoRegistro = "Retiro"
     }
 
-    # Loop through each row in the worksheet, starting from row 1
-    for ($i = 1; $i -le $lastRow; $i++) {
-        # Check if the current row contains the search value
-        if ($worksheet.Cells.Item($i, 1).Value2 -eq $searchValue -or $worksheet.Cells.Item($i, 2).Value2 -eq $searchValue) {
-            # If the search value is found, get the values in the row and copy them to the array
-            for ($j = 1; $j -le $worksheet.UsedRange.Columns.Count; $j++) {
-                if (($j -eq 3) -and ($worksheet.Cells.Item($i, 3).Value2 -eq "")) {
+    # Create connection to the SQLite database
+    $connection = New-Object System.Data.SQLite.SQLiteConnection
+    $connection.ConnectionString = "Data Source=$global:databasePath;Version=3;"
+ 
+    $connection.Open()
+
+    $command = $connection.CreateCommand()
+
+    # Set the SQL query to search for the computer by serial number or asset tag
+    $query = "SELECT serial_number, asset_tag, assigned_to, model, device_type FROM Computers WHERE serial_number = '$searchValue' OR asset_tag = '$searchValue'"
+
+    # Set the command text to the SQL query
+    $command.CommandText = $query
+
+    # Execute the SQL query and get the result set
+    $reader = $command.ExecuteReader()
+
+    # Check if the result set has any rows
+    if ($reader.HasRows) {
+        # Loop through the rows in the result set
+        while ($reader.Read()) {
+            # Add the values in the row to the array
+            for ($i = 0; $i -lt $reader.FieldCount; $i++) {
+                $value = $reader.GetValue($i)
+                $stringValue = $value.ToString()
+                if (($i -eq 2) -and ($stringValue -eq "")) {
                     $foundItem += "No asignado"
                 } else {
-                    $cell = $worksheet.Cells.Item($i, $j).Value2
-                    $foundItem += $cell
+                    $foundItem += $stringValue
                 }
             }
-
-            # Add the current date/time to the next cell
-            $foundItem += $dateString
-
-            # Add the type of registration to the next cell
-            $foundItem += $tipoRegistro
-
-            # Add the name of the person that has the computer to the next cell
-            $foundItem += $foundItem[2]
-
-            # Add the person who verifies the registration to the next cell
-            $foundItem += [System.Environment]::UserName.ToUpper()
-
-            # Exit the loop once the search value is found
-            break
         }
+    } else {
+        return $null
     }
+
+    # Add the current date/time to the next cell
+    $foundItem += $dateString
+
+    # Add the type of registration to the next cell
+    $foundItem += $tipoRegistro
+
+    # Add the name of the person that has the computer to the next cell
+    $foundItem += $foundItem[2]
+
+    # Add the person who verifies the registration to the next cell
+    $foundItem += [System.Environment]::UserName.ToUpper()
+
+    # Close the reader and the connection to the database
+    $reader.Close()
+    $connection.Close()
+
     return $foundItem
 }
 
 function Add_Record_To_File ($foundItem) {
-    $outputExcelAppProcess = Get-Process excel -ErrorAction SilentlyContinue | Where-Object {$_.MainWindowTitle -like "*Minuta_computadores*"}
+    $tableName = "Registration"
+
+    $connection = New-Object -TypeName System.Data.SQLite.SQLiteConnection -ArgumentList "Data Source=$global:databasePath;Version=3;"
+    $connection.Open()
+
+    $command = $connection.CreateCommand()
+    $command.CommandText = "INSERT INTO $tableName (serial_number, asset_tag, assigned_to, model, device_type, registration_date, registration_type, equipment_carrier, registration_verifier, additional_info) VALUES (@serial_number, @asset_tag, @assigned_to, @model, @device_type, @registration_date, @registration_type, @equipment_carrier, @registration_verifier, @additional_info)"
+
+    $param1 = New-Object -TypeName System.Data.SQLite.SQLiteParameter
+    $param1.ParameterName = "@serial_number"
+    $param1.Value = $foundItem[0]
+    $command.Parameters.Add($param1)
+
+    $param2 = New-Object -TypeName System.Data.SQLite.SQLiteParameter
+    $param2.ParameterName = "@asset_tag"
+    $param2.Value = $foundItem[1]
+    $command.Parameters.Add($param2)
+
+    $param3 = New-Object -TypeName System.Data.SQLite.SQLiteParameter
+    $param3.ParameterName = "@assigned_to"
+    $param3.Value = $foundItem[2]
+    $command.Parameters.Add($param3)
+
+    $param4 = New-Object -TypeName System.Data.SQLite.SQLiteParameter
+    $param4.ParameterName = "@model"
+    $param4.Value = $foundItem[3]
+    $command.Parameters.Add($param4)
+
+    $param5 = New-Object -TypeName System.Data.SQLite.SQLiteParameter
+    $param5.ParameterName = "@device_type"
+    $param5.Value = $foundItem[4]
+    $command.Parameters.Add($param5)
+
+    $param6 = New-Object -TypeName System.Data.SQLite.SQLiteParameter
+    $param6.ParameterName = "@registration_date"
+    $param6.Value = $foundItem[5]
+    $command.Parameters.Add($param6)
+
+    $param7 = New-Object -TypeName System.Data.SQLite.SQLiteParameter
+    $param7.ParameterName = "@registration_type"
+    $param7.Value = $foundItem[6]
+    $command.Parameters.Add($param7)
+
+    $param8 = New-Object -TypeName System.Data.SQLite.SQLiteParameter
+    $param8.ParameterName = "@equipment_carrier"
+    $param8.Value = $foundItem[7]
+    $command.Parameters.Add($param8)
+
+    $param9 = New-Object -TypeName System.Data.SQLite.SQLiteParameter
+    $param9.ParameterName = "@registration_verifier"
+    $param9.Value = $foundItem[8]
+    $command.Parameters.Add($param9)
+
+    $param10 = New-Object -TypeName System.Data.SQLite.SQLiteParameter
+    $param10.ParameterName = "@additional_info"
+    $param10.Value = $foundItem[9]
+    $command.Parameters.Add($param10)
+
+    $command.ExecuteNonQuery()
+    $command.Parameters.Clear()
     
-    while ($outputExcelAppProcess) {
-        [System.Windows.Forms.MessageBox]::Show("Cierre el archivo Minuta_computadores.xlsx para poder registrar el equipo", "Error", "OK", "Error")
-        $outputExcelAppProcess = Get-Process excel -ErrorAction SilentlyContinue | Where-Object {$_.MainWindowTitle -like "*Minuta_computadores*"}
-    }
-
-    $outputExcelApp = New-Object -ComObject Excel.Application
-    $outputWorkbook = $outputExcelApp.Workbooks.Open($global:OutputFilePath, 3)
-    $outputWorksheet = $outputWorkbook.Sheets.Item(1)
-
-    $outputWorksheet.Unprotect("1478")
-
-    # Get the last row of data in the output worksheet
-    $outputLastRow = $outputWorksheet.UsedRange.Rows.Count
-
-    # Copy the values from the input worksheet to the output worksheet
-    for ($j = 1; $j -le $foundItem.Length; $j++) {
-        $outputWorksheet.Cells.Item($outputLastRow + 1, $j).Value2 = $foundItem[$j-1]
-    }
-
-    # Lock the new row
-    $newRowRange = $outputWorksheet.Range("A$($outputLastRow + 1):J$($outputLastRow + 1)")
-    $newRowRange.Locked = $True
-
-    # Protect the workbook again
-    $outputWorksheet.Protect("1478")
-
-    $outputWorkbook.Save()
-    $outputWorkbook.Close()
-
-    $outputExcelApp.Quit()
-
-    [System.Runtime.Interopservices.Marshal]::ReleaseComObject($newRowRange) | Out-Null
-    [System.Runtime.Interopservices.Marshal]::ReleaseComObject($outputWorksheet) | Out-Null
-    [System.Runtime.Interopservices.Marshal]::ReleaseComObject($outputWorkbook) | Out-Null
-    [System.Runtime.Interopservices.Marshal]::ReleaseComObject($outputExcelApp) | Out-Null
-
-    # Force garbage collection to release memory
-    [GC]::Collect()
-
-    # Wait for any pending Com invocations to complete before exiting
-    [System.Runtime.Interopservices.Marshal]::FinalReleaseComObject($newRowRange) | Out-Null
-    [System.Runtime.Interopservices.Marshal]::FinalReleaseComObject($outputWorksheet) | Out-Null
-    [System.Runtime.Interopservices.Marshal]::FinalReleaseComObject($outputWorkbook) | Out-Null
-    [System.Runtime.Interopservices.Marshal]::FinalReleaseComObject($outputExcelApp) | Out-Null
+    $connection.Close()
 }
 
 function Get_Different_Bearer ($foundItem) {
@@ -365,17 +402,11 @@ function Record_Equipment {
 }
 
 # Load the Excel file into a variable
-if ((Test-Path $global:InputFilePath) -and (Test-Path $global:OutputFilePath)) {
-    $global:InputExcelApp = New-Object -ComObject Excel.Application
-    $global:InputWorkbook = $global:InputExcelApp.Workbooks.Open($inputFilePath)
-
+if (Test-Path $global:databasePath) {
     # Event handler for FormClosing event
     $handler_FormClosing = {
-        $global:InputWorkbook.Close()
-        # Quit Excel and release the object
-        $global:InputExcelApp.Quit()
-        
-        [System.Runtime.Interopservices.Marshal]::ReleaseComObject($global:InputExcelApp) | Out-Null
+        # Force garbage collection to release memory
+        [GC]::Collect()
     }
 
     # Create a form
@@ -429,9 +460,6 @@ if ((Test-Path $global:InputFilePath) -and (Test-Path $global:OutputFilePath)) {
     # Show the form
     $form.ShowDialog() | Out-Null
 
-    Unregister-Event -SourceIdentifier FormClosing
-    [System.Runtime.Interopservices.Marshal]::ReleaseComObject($global:InputExcelApp) | Out-Null
-
 } else {
-    [System.Windows.Forms.MessageBox]::Show([System.Text.RegularExpressions.Regex]::Unescape("No se encontr\u00F3 archivo de lectura o escritura"), "Error", "OK", "Error")
+    [System.Windows.Forms.MessageBox]::Show([System.Text.RegularExpressions.Regex]::Unescape("No se encontr\u00F3 base de datos"), "Error", "OK", "Error")
 }

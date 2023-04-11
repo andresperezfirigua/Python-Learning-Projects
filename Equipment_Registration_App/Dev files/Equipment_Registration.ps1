@@ -19,11 +19,12 @@ public static void Hide()
 }'
 [ConsoleApp.Window]::Hide()
 
-$global:InputFilePath = "C:\Equipment_Registration_App\alm_hardware.xlsx"
-$global:OutputFilePath = "C:\Equipment_Registration_App\Minuta_computadores.xlsx"
 
-#$global:InputFilePath = "$($env:USERPROFILE)\PycharmProjects\Equipment_Registration_App\Equipment_Registration_App\alm_hardware.xlsx"
+$global:OutputFilePath = "C:\Equipment_Registration_App\Minuta_computadores.xlsx"
+$global:databasePath = "C:\Equipment_Registration_App\alm_hardware.db"
+
 #$global:OutputFilePath = "$($env:USERPROFILE)\PycharmProjects\Equipment_Registration_App\Equipment_Registration_App\Minuta_computadores.xlsx"
+#$global:databasePath = "$($env:USERPROFILE)\PycharmProjects\Equipment_Registration_App\Equipment_Registration_App\alm_hardware.db"
 
 function Clean_Controls {
     $textboxSearch.Text = ""
@@ -166,10 +167,9 @@ function Add_Non_Asurion_Device {
 }
 
 function Find_Computer($searchValue) {
+    Import-Module -Name SQLite
+
     $foundItem = @()
-    
-    $worksheet = $global:InputWorkbook.Sheets.Item(1)
-    $lastRow = $worksheet.UsedRange.Rows.Count
 
     $timezone = [System.TimeZoneInfo]::FindSystemTimeZoneById("SA Pacific Standard Time")
     $date = [System.TimeZoneInfo]::ConvertTimeFromUtc((Get-Date).ToUniversalTime(), $timezone)
@@ -184,36 +184,58 @@ function Find_Computer($searchValue) {
         $tipoRegistro = "Retiro"
     }
 
-    # Loop through each row in the worksheet, starting from row 1
-    for ($i = 1; $i -le $lastRow; $i++) {
-        # Check if the current row contains the search value
-        if ($worksheet.Cells.Item($i, 1).Value2 -eq $searchValue -or $worksheet.Cells.Item($i, 2).Value2 -eq $searchValue) {
-            # If the search value is found, get the values in the row and copy them to the array
-            for ($j = 1; $j -le $worksheet.UsedRange.Columns.Count; $j++) {
-                if (($j -eq 3) -and ($worksheet.Cells.Item($i, 3).Value2 -eq "")) {
+    # Create connection to the SQLite database
+    $connection = New-Object System.Data.SQLite.SQLiteConnection
+    $connection.ConnectionString = "Data Source=$global:databasePath;Version=3;"
+ 
+    $connection.Open()
+
+    $command = $connection.CreateCommand()
+
+    # Set the SQL query to search for the computer by serial number or asset tag
+    $query = "SELECT serial_number, asset_tag, assigned_to, model, device_type FROM Computers WHERE serial_number = '$searchValue' OR asset_tag = '$searchValue'"
+
+    # Set the command text to the SQL query
+    $command.CommandText = $query
+
+    # Execute the SQL query and get the result set
+    $reader = $command.ExecuteReader()
+
+    # Check if the result set has any rows
+    if ($reader.HasRows) {
+        # Loop through the rows in the result set
+        while ($reader.Read()) {
+            # Add the values in the row to the array
+            for ($i = 0; $i -lt $reader.FieldCount; $i++) {
+                $value = $reader.GetValue($i)
+                $stringValue = $value.ToString()
+                if (($i -eq 2) -and ($stringValue -eq "")) {
                     $foundItem += "No asignado"
                 } else {
-                    $cell = $worksheet.Cells.Item($i, $j).Value2
-                    $foundItem += $cell
+                    $foundItem += $stringValue
                 }
             }
-
-            # Add the current date/time to the next cell
-            $foundItem += $dateString
-
-            # Add the type of registration to the next cell
-            $foundItem += $tipoRegistro
-
-            # Add the name of the person that has the computer to the next cell
-            $foundItem += $foundItem[2]
-
-            # Add the person who verifies the registration to the next cell
-            $foundItem += [System.Environment]::UserName.ToUpper()
-
-            # Exit the loop once the search value is found
-            break
         }
+    } else {
+        return $null
     }
+
+    # Add the current date/time to the next cell
+    $foundItem += $dateString
+
+    # Add the type of registration to the next cell
+    $foundItem += $tipoRegistro
+
+    # Add the name of the person that has the computer to the next cell
+    $foundItem += $foundItem[2]
+
+    # Add the person who verifies the registration to the next cell
+    $foundItem += [System.Environment]::UserName.ToUpper()
+
+    # Close the reader and the connection to the database
+    $reader.Close()
+    $connection.Close()
+
     return $foundItem
 }
 
@@ -367,25 +389,11 @@ function Record_Equipment {
 }
 
 # Load the Excel file into a variable
-if ((Test-Path $global:InputFilePath) -and (Test-Path $global:OutputFilePath)) {
-    $global:InputExcelApp = New-Object -ComObject Excel.Application
-    $global:InputWorkbook = $global:InputExcelApp.Workbooks.Open($inputFilePath)
-
+if ((Test-Path $global:databasePath) -and (Test-Path $global:OutputFilePath)) {
     # Event handler for FormClosing event
     $handler_FormClosing = {
-        $global:InputWorkbook.Close()
-        # Quit Excel and release the object
-        $global:InputExcelApp.Quit()
-        
-        [System.Runtime.Interopservices.Marshal]::ReleaseComObject($global:InputWorkbook) | Out-Null
-        [System.Runtime.Interopservices.Marshal]::ReleaseComObject($global:InputExcelApp) | Out-Null
-
         # Force garbage collection to release memory
         [GC]::Collect()
-
-        # Wait for any pending Com invocations to complete before exiting
-        [System.Runtime.Interopservices.Marshal]::FinalReleaseComObject($global:InputWorkbook) | Out-Null
-        [System.Runtime.Interopservices.Marshal]::FinalReleaseComObject($global:InputExcelApp) | Out-Null
     }
 
     # Create a form
@@ -440,7 +448,6 @@ if ((Test-Path $global:InputFilePath) -and (Test-Path $global:OutputFilePath)) {
     $form.ShowDialog() | Out-Null
 
     Unregister-Event -SourceIdentifier FormClosing
-    [System.Runtime.Interopservices.Marshal]::ReleaseComObject($global:InputExcelApp) | Out-Null
 
 } else {
     [System.Windows.Forms.MessageBox]::Show([System.Text.RegularExpressions.Regex]::Unescape("No se encontr\u00F3 archivo de lectura o escritura"), "Error", "OK", "Error")
