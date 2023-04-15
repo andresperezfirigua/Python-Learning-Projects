@@ -1,23 +1,8 @@
 Add-Type -AssemblyName System.Windows.Forms
 Add-Type -AssemblyName System.Drawing
-# Hide the console window
-Add-Type -Name Window -Namespace ConsoleApp -MemberDefinition '
-[DllImport("Kernel32.dll")]
-public static extern IntPtr GetConsoleWindow();
 
-[DllImport("user32.dll")]
-public static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
+Write-Host "Running on .NET Framework $($PSVersionTable.CLRVersion.ToString())"
 
-public static void Hide()
-{
-    IntPtr hWnd = GetConsoleWindow();
-    if (hWnd != IntPtr.Zero)
-    {
-        // 0 = Hide the window
-        ShowWindow(hWnd, 0);
-    }
-}'
-[ConsoleApp.Window]::Hide()
 
 Import-Module -Name SQLite
 
@@ -136,7 +121,7 @@ function Add_Non_Asurion_Device {
     $buttonAddDevice.Add_Click({
         if (-not (ValidateTextbox)){
             $newComputer = @()
-            $newComputer += $textboxSerial.Text
+            $newComputer += $textboxSerial.Text.ToUpper()
             $newComputer += "N/A"
             $newComputer += "N/A"
             $newComputer += $textboxModel.Text
@@ -163,6 +148,28 @@ function Add_Non_Asurion_Device {
     $form.Controls.Add($buttonAddDevice)
     # Show the form
     $form.ShowDialog() | Out-Null
+}
+
+function Display_Recent_Records {
+    # Create connection to the SQLite database
+    $connection = New-Object System.Data.SQLite.SQLiteConnection
+    $connection.ConnectionString = "Data Source=$global:databasePath;Version=3;"
+ 
+    $connection.Open()
+
+    $command = $connection.CreateCommand()
+
+    # Set the SQL query to search for the computer by serial number or asset tag
+    $query = "SELECT serial_number, asset_tag, assigned_to, model, registration_date, registration_type, equipment_carrier, registration_verifier FROM (SELECT serial_number, asset_tag, assigned_to, model, registration_date, registration_type, equipment_carrier, registration_verifier FROM Registration ORDER BY registration_date DESC LIMIT 10) ORDER BY registration_date ASC"
+
+    # Set the command text to the SQL query
+    $command.CommandText = $query
+
+    $adapter = New-Object System.Data.SQLite.SQLiteDataAdapter($command)
+
+    $connection.Close()
+
+    return $adapter
 }
 
 function Find_Computer($searchValue) {
@@ -399,6 +406,15 @@ function Record_Equipment {
         [System.Windows.Forms.MessageBox]::Show("Registro agregado exitosamente.", "", "OK", "Information")
         Clean_Controls
     }
+
+    $table.Clear()
+    $adapter = Display_Recent_Records
+    [void]$adapter.Fill($table)
+    $dataGridView.DataSource = $table
+    $dataGridView.Refresh()
+    foreach ($col in $dataGridView.Columns) {
+        $col.SortMode = [System.Windows.Forms.DataGridViewColumnSortMode]::NotSortable
+    }
 }
 
 # Load the Excel file into a variable
@@ -411,39 +427,39 @@ if (Test-Path $global:databasePath) {
 
     # Create a form
     $form = New-Object System.Windows.Forms.Form
-    $form.Text = "Registration"
-    $form.Size = New-Object System.Drawing.Size(250, 225)
+    $form.Text = "Equipment Registration"
+    $form.Size = New-Object System.Drawing.Size(1150, 510)
     $form.StartPosition = "CenterScreen"
     $form.MaximizeBox = $false
     $form.FormBorderStyle = [System.Windows.Forms.FormBorderStyle]::FixedSingle
 
     # Create a label and text box for search value
     $labelSearch = New-Object System.Windows.Forms.Label
-    $labelSearch.Location = New-Object System.Drawing.Point(25, 20)
+    $labelSearch.Location = New-Object System.Drawing.Point(475, 20)
     $labelSearch.Size = New-Object System.Drawing.Size(200, 20)
     $labelSearch.Text = "Ingrese el equipo a buscar:"
     $form.Controls.Add($labelSearch)
 
     $textboxSearch = New-Object System.Windows.Forms.TextBox
-    $textboxSearch.Location = New-Object System.Drawing.Point(25, 40)
+    $textboxSearch.Location = New-Object System.Drawing.Point(475, 40)
     $textboxSearch.Size = New-Object System.Drawing.Size(200, 20)
     $form.Controls.Add($textboxSearch)
 
     $radioIngreso = New-Object System.Windows.Forms.RadioButton
-    $radioIngreso.Location = New-Object System.Drawing.Point(25, 70)
+    $radioIngreso.Location = New-Object System.Drawing.Point(475, 70)
     $radioIngreso.Size = New-Object System.Drawing.Size(200, 30)
     $radioIngreso.Text = "Ingreso de equipo"
     $form.Controls.Add($radioIngreso)
 
     $radioRetiro = New-Object System.Windows.Forms.RadioButton
-    $radioRetiro.Location = New-Object System.Drawing.Point(25, 100)
+    $radioRetiro.Location = New-Object System.Drawing.Point(475, 100)
     $radioRetiro.Size = New-Object System.Drawing.Size(200, 30)
     $radioRetiro.Text = "Retiro de equipo"
     $form.Controls.Add($radioRetiro)
 
     # Create a button for Registrar equipo
     $buttonRegistro = New-Object System.Windows.Forms.Button
-    $buttonRegistro.Location = New-Object System.Drawing.Point(25, 140)
+    $buttonRegistro.Location = New-Object System.Drawing.Point(475, 140)
     $buttonRegistro.Size = New-Object System.Drawing.Size(200, 30)
     $buttonRegistro.Text = "Registrar"
     $form.add_FormClosing($handler_FormClosing)
@@ -456,6 +472,32 @@ if (Test-Path $global:databasePath) {
             }
         })
     $form.Controls.Add($buttonRegistro)
+
+    $dataGridView = New-Object System.Windows.Forms.DataGridView
+    $dataGridView.Location = New-Object System.Drawing.Point(25, 190)
+    $dataGridView.Size = New-Object System.Drawing.Size(1085, 270)
+    $dataGridView.ReadOnly = $true
+    $dataGridView.AllowUserToResizeColumns = $false
+    $dataGridView.AllowUserToResizeRows = $false
+    $dataGridView.ColumnHeadersHeightSizeMode = [System.Windows.Forms.DataGridViewColumnHeadersHeightSizeMode]::DisableResizing
+    $dataGridView.RowHeadersWidthSizeMode = [System.Windows.Forms.DataGridViewRowHeadersWidthSizeMode]::DisableResizing
+    $dataGridView.RowHeadersWidth = 15
+    $dataGridView.AllowUserToOrderColumns = $false
+    $dataGridView.AutoSizeColumnsMode = [System.Windows.Forms.DataGridViewAutoSizeColumnsMode]::Fill
+
+    $form.Controls.Add($dataGridView)
+
+    $table = New-Object System.Data.DataTable
+
+    $form.add_Load({
+        $adapter = Display_Recent_Records
+        [void]$adapter.Fill($table)
+        $dataGridView.DataSource = $table
+        $dataGridView.Refresh()
+        foreach ($col in $dataGridView.Columns) {
+            $col.SortMode = [System.Windows.Forms.DataGridViewColumnSortMode]::NotSortable
+        }
+    })
 
     # Show the form
     $form.ShowDialog() | Out-Null

@@ -3,7 +3,7 @@ Import-Module -Name ImportExcel
 Import-Module -Name SQLite
 
 # Set the paths to the Excel file and the SQLite database
-$excelPath = "C:\Users\andresfelipe.perez\PycharmProjects\Equipment_Registration_App\Equipment_Registration_App\alm_hardware.xlsx"
+$excelPath = "C:\Users\andresfelipe.perez\PycharmProjects\Equipment_Registration_App\Dev files\alm_hardware.xlsx"
 $databasePath = "C:\Users\andresfelipe.perez\PycharmProjects\Equipment_Registration_App\Equipment_Registration_App\alm_hardware.db"
 
 # Import the data from the Excel file

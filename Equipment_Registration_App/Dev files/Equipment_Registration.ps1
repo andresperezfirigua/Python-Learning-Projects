@@ -19,12 +19,9 @@ public static void Hide()
 }'
 [ConsoleApp.Window]::Hide()
 
+Import-Module -Name SQLite
 
-$global:OutputFilePath = "C:\Equipment_Registration_App\Minuta_computadores.xlsx"
 $global:databasePath = "C:\Equipment_Registration_App\alm_hardware.db"
-
-#$global:OutputFilePath = "$($env:USERPROFILE)\PycharmProjects\Equipment_Registration_App\Equipment_Registration_App\Minuta_computadores.xlsx"
-#$global:databasePath = "$($env:USERPROFILE)\PycharmProjects\Equipment_Registration_App\Equipment_Registration_App\alm_hardware.db"
 
 function Clean_Controls {
     $textboxSearch.Text = ""
@@ -137,7 +134,7 @@ function Add_Non_Asurion_Device {
     $buttonAddDevice.Add_Click({
         if (-not (ValidateTextbox)){
             $newComputer = @()
-            $newComputer += $textboxSerial.Text
+            $newComputer += $textboxSerial.Text.ToUpper()
             $newComputer += "N/A"
             $newComputer += "N/A"
             $newComputer += $textboxModel.Text
@@ -166,9 +163,29 @@ function Add_Non_Asurion_Device {
     $form.ShowDialog() | Out-Null
 }
 
-function Find_Computer($searchValue) {
-    Import-Module -Name SQLite
+function Display_Recent_Records {
+    # Create connection to the SQLite database
+    $connection = New-Object System.Data.SQLite.SQLiteConnection
+    $connection.ConnectionString = "Data Source=$global:databasePath;Version=3;"
+ 
+    $connection.Open()
 
+    $command = $connection.CreateCommand()
+
+    # Set the SQL query to search for the computer by serial number or asset tag
+    $query = "SELECT serial_number, asset_tag, assigned_to, model, registration_date, registration_type, equipment_carrier, registration_verifier FROM (SELECT serial_number, asset_tag, assigned_to, model, registration_date, registration_type, equipment_carrier, registration_verifier FROM Registration ORDER BY registration_date DESC LIMIT 10) ORDER BY registration_date ASC"
+
+    # Set the command text to the SQL query
+    $command.CommandText = $query
+
+    $adapter = New-Object System.Data.SQLite.SQLiteDataAdapter($command)
+
+    $connection.Close()
+
+    return $adapter
+}
+
+function Find_Computer($searchValue) {
     $foundItem = @()
 
     $timezone = [System.TimeZoneInfo]::FindSystemTimeZoneById("SA Pacific Standard Time")
@@ -240,52 +257,68 @@ function Find_Computer($searchValue) {
 }
 
 function Add_Record_To_File ($foundItem) {
-    $outputExcelAppProcess = Get-Process excel -ErrorAction SilentlyContinue | Where-Object {$_.MainWindowTitle -like "*Minuta_computadores*"}
+    $tableName = "Registration"
+
+    $connection = New-Object -TypeName System.Data.SQLite.SQLiteConnection -ArgumentList "Data Source=$global:databasePath;Version=3;"
+    $connection.Open()
+
+    $command = $connection.CreateCommand()
+    $command.CommandText = "INSERT INTO $tableName (serial_number, asset_tag, assigned_to, model, device_type, registration_date, registration_type, equipment_carrier, registration_verifier, additional_info) VALUES (@serial_number, @asset_tag, @assigned_to, @model, @device_type, @registration_date, @registration_type, @equipment_carrier, @registration_verifier, @additional_info)"
+
+    $param1 = New-Object -TypeName System.Data.SQLite.SQLiteParameter
+    $param1.ParameterName = "@serial_number"
+    $param1.Value = $foundItem[0]
+    $command.Parameters.Add($param1)
+
+    $param2 = New-Object -TypeName System.Data.SQLite.SQLiteParameter
+    $param2.ParameterName = "@asset_tag"
+    $param2.Value = $foundItem[1]
+    $command.Parameters.Add($param2)
+
+    $param3 = New-Object -TypeName System.Data.SQLite.SQLiteParameter
+    $param3.ParameterName = "@assigned_to"
+    $param3.Value = $foundItem[2]
+    $command.Parameters.Add($param3)
+
+    $param4 = New-Object -TypeName System.Data.SQLite.SQLiteParameter
+    $param4.ParameterName = "@model"
+    $param4.Value = $foundItem[3]
+    $command.Parameters.Add($param4)
+
+    $param5 = New-Object -TypeName System.Data.SQLite.SQLiteParameter
+    $param5.ParameterName = "@device_type"
+    $param5.Value = $foundItem[4]
+    $command.Parameters.Add($param5)
+
+    $param6 = New-Object -TypeName System.Data.SQLite.SQLiteParameter
+    $param6.ParameterName = "@registration_date"
+    $param6.Value = $foundItem[5]
+    $command.Parameters.Add($param6)
+
+    $param7 = New-Object -TypeName System.Data.SQLite.SQLiteParameter
+    $param7.ParameterName = "@registration_type"
+    $param7.Value = $foundItem[6]
+    $command.Parameters.Add($param7)
+
+    $param8 = New-Object -TypeName System.Data.SQLite.SQLiteParameter
+    $param8.ParameterName = "@equipment_carrier"
+    $param8.Value = $foundItem[7]
+    $command.Parameters.Add($param8)
+
+    $param9 = New-Object -TypeName System.Data.SQLite.SQLiteParameter
+    $param9.ParameterName = "@registration_verifier"
+    $param9.Value = $foundItem[8]
+    $command.Parameters.Add($param9)
+
+    $param10 = New-Object -TypeName System.Data.SQLite.SQLiteParameter
+    $param10.ParameterName = "@additional_info"
+    $param10.Value = $foundItem[9]
+    $command.Parameters.Add($param10)
+
+    $command.ExecuteNonQuery()
+    $command.Parameters.Clear()
     
-    while ($outputExcelAppProcess) {
-        [System.Windows.Forms.MessageBox]::Show("Cierre el archivo Minuta_computadores.xlsx para poder registrar el equipo", "Error", "OK", "Error")
-        $outputExcelAppProcess = Get-Process excel -ErrorAction SilentlyContinue | Where-Object {$_.MainWindowTitle -like "*Minuta_computadores*"}
-    }
-
-    $outputExcelApp = New-Object -ComObject Excel.Application
-    $outputWorkbook = $outputExcelApp.Workbooks.Open($global:OutputFilePath, 3)
-    $outputWorksheet = $outputWorkbook.Sheets.Item(1)
-
-    $outputWorksheet.Unprotect("1478")
-
-    # Get the last row of data in the output worksheet
-    $outputLastRow = $outputWorksheet.UsedRange.Rows.Count
-
-    # Copy the values from the input worksheet to the output worksheet
-    for ($j = 1; $j -le $foundItem.Length; $j++) {
-        $outputWorksheet.Cells.Item($outputLastRow + 1, $j).Value2 = $foundItem[$j-1]
-    }
-
-    # Lock the new row
-    $newRowRange = $outputWorksheet.Range("A$($outputLastRow + 1):J$($outputLastRow + 1)")
-    $newRowRange.Locked = $True
-
-    # Protect the workbook again
-    $outputWorksheet.Protect("1478")
-
-    $outputWorkbook.Save()
-    $outputWorkbook.Close()
-
-    $outputExcelApp.Quit()
-
-    [System.Runtime.Interopservices.Marshal]::ReleaseComObject($newRowRange) | Out-Null
-    [System.Runtime.Interopservices.Marshal]::ReleaseComObject($outputWorksheet) | Out-Null
-    [System.Runtime.Interopservices.Marshal]::ReleaseComObject($outputWorkbook) | Out-Null
-    [System.Runtime.Interopservices.Marshal]::ReleaseComObject($outputExcelApp) | Out-Null
-
-    # Force garbage collection to release memory
-    [GC]::Collect()
-
-    # Wait for any pending Com invocations to complete before exiting
-    [System.Runtime.Interopservices.Marshal]::FinalReleaseComObject($newRowRange) | Out-Null
-    [System.Runtime.Interopservices.Marshal]::FinalReleaseComObject($outputWorksheet) | Out-Null
-    [System.Runtime.Interopservices.Marshal]::FinalReleaseComObject($outputWorkbook) | Out-Null
-    [System.Runtime.Interopservices.Marshal]::FinalReleaseComObject($outputExcelApp) | Out-Null
+    $connection.Close()
 }
 
 function Get_Different_Bearer ($foundItem) {
@@ -386,10 +419,19 @@ function Record_Equipment {
         [System.Windows.Forms.MessageBox]::Show("Registro agregado exitosamente.", "", "OK", "Information")
         Clean_Controls
     }
+
+    $table.Clear()
+    $adapter = Display_Recent_Records
+    [void]$adapter.Fill($table)
+    $dataGridView.DataSource = $table
+    $dataGridView.Refresh()
+    foreach ($col in $dataGridView.Columns) {
+        $col.SortMode = [System.Windows.Forms.DataGridViewColumnSortMode]::NotSortable
+    }
 }
 
 # Load the Excel file into a variable
-if ((Test-Path $global:databasePath) -and (Test-Path $global:OutputFilePath)) {
+if (Test-Path $global:databasePath) {
     # Event handler for FormClosing event
     $handler_FormClosing = {
         # Force garbage collection to release memory
@@ -398,39 +440,39 @@ if ((Test-Path $global:databasePath) -and (Test-Path $global:OutputFilePath)) {
 
     # Create a form
     $form = New-Object System.Windows.Forms.Form
-    $form.Text = "Registration"
-    $form.Size = New-Object System.Drawing.Size(250, 225)
+    $form.Text = "Equipment Registration"
+    $form.Size = New-Object System.Drawing.Size(1150, 510)
     $form.StartPosition = "CenterScreen"
     $form.MaximizeBox = $false
     $form.FormBorderStyle = [System.Windows.Forms.FormBorderStyle]::FixedSingle
 
     # Create a label and text box for search value
     $labelSearch = New-Object System.Windows.Forms.Label
-    $labelSearch.Location = New-Object System.Drawing.Point(25, 20)
+    $labelSearch.Location = New-Object System.Drawing.Point(475, 20)
     $labelSearch.Size = New-Object System.Drawing.Size(200, 20)
     $labelSearch.Text = "Ingrese el equipo a buscar:"
     $form.Controls.Add($labelSearch)
 
     $textboxSearch = New-Object System.Windows.Forms.TextBox
-    $textboxSearch.Location = New-Object System.Drawing.Point(25, 40)
+    $textboxSearch.Location = New-Object System.Drawing.Point(475, 40)
     $textboxSearch.Size = New-Object System.Drawing.Size(200, 20)
     $form.Controls.Add($textboxSearch)
 
     $radioIngreso = New-Object System.Windows.Forms.RadioButton
-    $radioIngreso.Location = New-Object System.Drawing.Point(25, 70)
+    $radioIngreso.Location = New-Object System.Drawing.Point(475, 70)
     $radioIngreso.Size = New-Object System.Drawing.Size(200, 30)
     $radioIngreso.Text = "Ingreso de equipo"
     $form.Controls.Add($radioIngreso)
 
     $radioRetiro = New-Object System.Windows.Forms.RadioButton
-    $radioRetiro.Location = New-Object System.Drawing.Point(25, 100)
+    $radioRetiro.Location = New-Object System.Drawing.Point(475, 100)
     $radioRetiro.Size = New-Object System.Drawing.Size(200, 30)
     $radioRetiro.Text = "Retiro de equipo"
     $form.Controls.Add($radioRetiro)
 
     # Create a button for Registrar equipo
     $buttonRegistro = New-Object System.Windows.Forms.Button
-    $buttonRegistro.Location = New-Object System.Drawing.Point(25, 140)
+    $buttonRegistro.Location = New-Object System.Drawing.Point(475, 140)
     $buttonRegistro.Size = New-Object System.Drawing.Size(200, 30)
     $buttonRegistro.Text = "Registrar"
     $form.add_FormClosing($handler_FormClosing)
@@ -444,11 +486,35 @@ if ((Test-Path $global:databasePath) -and (Test-Path $global:OutputFilePath)) {
         })
     $form.Controls.Add($buttonRegistro)
 
+    $dataGridView = New-Object System.Windows.Forms.DataGridView
+    $dataGridView.Location = New-Object System.Drawing.Point(25, 190)
+    $dataGridView.Size = New-Object System.Drawing.Size(1085, 270)
+    $dataGridView.ReadOnly = $true
+    $dataGridView.AllowUserToResizeColumns = $false
+    $dataGridView.AllowUserToResizeRows = $false
+    $dataGridView.ColumnHeadersHeightSizeMode = [System.Windows.Forms.DataGridViewColumnHeadersHeightSizeMode]::DisableResizing
+    $dataGridView.RowHeadersWidthSizeMode = [System.Windows.Forms.DataGridViewRowHeadersWidthSizeMode]::DisableResizing
+    $dataGridView.RowHeadersWidth = 15
+    $dataGridView.AllowUserToOrderColumns = $false
+    $dataGridView.AutoSizeColumnsMode = [System.Windows.Forms.DataGridViewAutoSizeColumnsMode]::Fill
+
+    $form.Controls.Add($dataGridView)
+
+    $table = New-Object System.Data.DataTable
+
+    $form.add_Load({
+        $adapter = Display_Recent_Records
+        [void]$adapter.Fill($table)
+        $dataGridView.DataSource = $table
+        $dataGridView.Refresh()
+        foreach ($col in $dataGridView.Columns) {
+            $col.SortMode = [System.Windows.Forms.DataGridViewColumnSortMode]::NotSortable
+        }
+    })
+
     # Show the form
     $form.ShowDialog() | Out-Null
 
-    Unregister-Event -SourceIdentifier FormClosing
-
 } else {
-    [System.Windows.Forms.MessageBox]::Show([System.Text.RegularExpressions.Regex]::Unescape("No se encontr\u00F3 archivo de lectura o escritura"), "Error", "OK", "Error")
+    [System.Windows.Forms.MessageBox]::Show([System.Text.RegularExpressions.Regex]::Unescape("No se encontr\u00F3 base de datos"), "Error", "OK", "Error")
 }
