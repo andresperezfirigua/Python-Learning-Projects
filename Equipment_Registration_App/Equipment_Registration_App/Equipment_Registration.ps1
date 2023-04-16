@@ -21,7 +21,7 @@ public static void Hide()
 
 Import-Module -Name SQLite
 
-$global:databasePath = "$pwd\alm_hardware.db"
+$global:databasePath = "C:\Equipment_Registration_App\alm_hardware.db"
 
 function Clean_Controls {
     $textboxSearch.Text = ""

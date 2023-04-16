@@ -1,14 +1,27 @@
 Add-Type -AssemblyName System.Windows.Forms
 Add-Type -AssemblyName System.Drawing
+# Hide the console window
+Add-Type -Name Window -Namespace ConsoleApp -MemberDefinition '
+[DllImport("Kernel32.dll")]
+public static extern IntPtr GetConsoleWindow();
 
-Write-Host "Running on .NET Framework $($PSVersionTable.CLRVersion.ToString())"
+[DllImport("user32.dll")]
+public static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
 
+public static void Hide()
+{
+    IntPtr hWnd = GetConsoleWindow();
+    if (hWnd != IntPtr.Zero)
+    {
+        // 0 = Hide the window
+        ShowWindow(hWnd, 0);
+    }
+}'
+[ConsoleApp.Window]::Hide()
 
 Import-Module -Name SQLite
 
-#$global:databasePath = "C:\Equipment_Registration_App\alm_hardware.db"
-
-$global:databasePath = "$($env:USERPROFILE)\PycharmProjects\Equipment_Registration_App\Equipment_Registration_App\alm_hardware.db"
+$global:databasePath = "$pwd\alm_hardware.db"
 
 function Clean_Controls {
     $textboxSearch.Text = ""
