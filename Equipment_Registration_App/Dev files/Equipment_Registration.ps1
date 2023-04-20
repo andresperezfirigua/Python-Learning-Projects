@@ -21,7 +21,7 @@ public static void Hide()
 
 Import-Module -Name SQLite
 
-$global:databasePath = "$pwd\alm_hardware.db"
+$global:databasePath = "C:\Equipment_Registration_App\alm_hardware.db"
 
 function Clean_Controls {
     $textboxSearch.Text = ""
@@ -220,18 +220,24 @@ function Find_Computer($searchValue) {
 
     # Check if the result set has any rows
     if ($reader.HasRows) {
+        $row_count = 0
         # Loop through the rows in the result set
         while ($reader.Read()) {
-            # Add the values in the row to the array
-            for ($i = 0; $i -lt $reader.FieldCount; $i++) {
-                $value = $reader.GetValue($i)
-                $stringValue = $value.ToString()
-                if (($i -eq 2) -and ($stringValue -eq "")) {
-                    $foundItem += "No asignado"
-                } else {
-                    $foundItem += $stringValue
+            if ($row_count -eq 0){
+                # Add the values in the row to the array
+                for ($i = 0; $i -lt $reader.FieldCount; $i++) {
+                    $value = $reader.GetValue($i)
+                    $stringValue = $value.ToString()
+                    if (($i -eq 2) -and ($stringValue -eq "")) {
+                        $foundItem += "No asignado"
+                    } else {
+                        $foundItem += $stringValue
+                    }
                 }
+            } else {
+                break
             }
+            $row_count += 1
         }
     } else {
         return $null
@@ -413,11 +419,17 @@ function Record_Equipment {
             Clean_Controls
         }
     } else {
-        [System.Windows.Forms.MessageBox]::Show("El equipo no fue encontrado. Posibles razones:`n`n- Puede que no sea un PC o una laptop`n- Puede ser propiedad de Asurion pero en otro pais`n- Puede no ser propiedad de Asurion`n`n De clic en OK para registrarlo.", "Error", "OK", "Error")
-        Add_Non_Asurion_Device
-        # Display a message to the user indicating that the data was added successfully
-        [System.Windows.Forms.MessageBox]::Show("Registro agregado exitosamente.", "", "OK", "Information")
-        Clean_Controls
+        $add_non_asurion_device = [System.Windows.Forms.MessageBox]::Show("El equipo no fue encontrado.`n`n- Recuerda que solo se pueden registran computadores`n- Este puede ser un computador de Asurion pero en otro pais`n- Este computador puede no ser propiedad de Asurion`n`n Desea registrar este equipo?", "Confirmation", "YesNoCancel", "Error")
+        if ($add_non_asurion_device -eq "Yes") {
+            Add_Non_Asurion_Device
+            # Display a message to the user indicating that the data was added successfully
+            [System.Windows.Forms.MessageBox]::Show("Registro agregado exitosamente.", "", "OK", "Information")
+            Clean_Controls
+        } elseif ($add_non_asurion_device -eq "No") {
+            Clean_Controls
+        } elseif ($add_non_asurion_device -eq "Cancel") {
+            Clean_Controls
+        }
     }
 
     $table.Clear()
