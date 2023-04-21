@@ -1,3 +1,4 @@
+#$global:databasePath = "C:\Equipment_Registration_App\alm_hardware.db"
 Add-Type -AssemblyName System.Windows.Forms
 Add-Type -AssemblyName System.Drawing
 # Hide the console window
@@ -172,9 +173,9 @@ function Display_Recent_Records {
 
     $command = $connection.CreateCommand()
 
-    # Set the SQL query to search for the computer by serial number or asset tag
-    $query = "SELECT serial_number, asset_tag, assigned_to, model, registration_date, registration_type, equipment_carrier, registration_verifier FROM (SELECT serial_number, asset_tag, assigned_to, model, registration_date, registration_type, equipment_carrier, registration_verifier FROM Registration ORDER BY registration_date DESC LIMIT 10) ORDER BY registration_date ASC"
-
+    $today = Get-Date -Format 'yyyy-MM-dd'
+    $query = "SELECT serial_number, asset_tag, assigned_to, model, registration_date, registration_type, equipment_carrier, registration_verifier FROM (SELECT serial_number, asset_tag, assigned_to, model, registration_date, registration_type, equipment_carrier, registration_verifier FROM Registration WHERE registration_date LIKE '$today%') ORDER BY registration_date ASC"
+    
     # Set the command text to the SQL query
     $command.CommandText = $query
 
@@ -419,15 +420,13 @@ function Record_Equipment {
             Clean_Controls
         }
     } else {
-        $add_non_asurion_device = [System.Windows.Forms.MessageBox]::Show("El equipo no fue encontrado.`n`n- Recuerda que solo se pueden registran computadores`n- Este puede ser un computador de Asurion pero en otro pais`n- Este computador puede no ser propiedad de Asurion`n`n Desea registrar este equipo?", "Confirmation", "YesNoCancel", "Error")
+        $add_non_asurion_device = [System.Windows.Forms.MessageBox]::Show("El equipo no fue encontrado.`n`n- Recuerda que solo se pueden registran computadores`n- Este puede ser un computador de Asurion pero en otro pais`n- Este computador puede no ser propiedad de Asurion`n`n Desea registrar este equipo?", "Confirmation", "YesNo", "Error")
         if ($add_non_asurion_device -eq "Yes") {
             Add_Non_Asurion_Device
             # Display a message to the user indicating that the data was added successfully
             [System.Windows.Forms.MessageBox]::Show("Registro agregado exitosamente.", "", "OK", "Information")
             Clean_Controls
         } elseif ($add_non_asurion_device -eq "No") {
-            Clean_Controls
-        } elseif ($add_non_asurion_device -eq "Cancel") {
             Clean_Controls
         }
     }
@@ -440,6 +439,7 @@ function Record_Equipment {
     foreach ($col in $dataGridView.Columns) {
         $col.SortMode = [System.Windows.Forms.DataGridViewColumnSortMode]::NotSortable
     }
+    $dataGridView.FirstDisplayedScrollingRowIndex = $dataGridView.Rows.Count - 1
 }
 
 # Load the Excel file into a variable
@@ -461,30 +461,30 @@ if (Test-Path $global:databasePath) {
     # Create a label and text box for search value
     $labelSearch = New-Object System.Windows.Forms.Label
     $labelSearch.Location = New-Object System.Drawing.Point(475, 20)
-    $labelSearch.Size = New-Object System.Drawing.Size(200, 20)
-    $labelSearch.Text = "Ingrese el equipo a buscar:"
+    $labelSearch.Size = New-Object System.Drawing.Size(200, 30)
+    $labelSearch.Text = "Ingrese el equipo a buscar: `n(Se recomienda buscar por serial)"
     $form.Controls.Add($labelSearch)
 
     $textboxSearch = New-Object System.Windows.Forms.TextBox
-    $textboxSearch.Location = New-Object System.Drawing.Point(475, 40)
+    $textboxSearch.Location = New-Object System.Drawing.Point(475, 50)
     $textboxSearch.Size = New-Object System.Drawing.Size(200, 20)
     $form.Controls.Add($textboxSearch)
 
     $radioIngreso = New-Object System.Windows.Forms.RadioButton
-    $radioIngreso.Location = New-Object System.Drawing.Point(475, 70)
+    $radioIngreso.Location = New-Object System.Drawing.Point(475, 80)
     $radioIngreso.Size = New-Object System.Drawing.Size(200, 30)
     $radioIngreso.Text = "Ingreso de equipo"
     $form.Controls.Add($radioIngreso)
 
     $radioRetiro = New-Object System.Windows.Forms.RadioButton
-    $radioRetiro.Location = New-Object System.Drawing.Point(475, 100)
+    $radioRetiro.Location = New-Object System.Drawing.Point(475, 110)
     $radioRetiro.Size = New-Object System.Drawing.Size(200, 30)
     $radioRetiro.Text = "Retiro de equipo"
     $form.Controls.Add($radioRetiro)
 
     # Create a button for Registrar equipo
     $buttonRegistro = New-Object System.Windows.Forms.Button
-    $buttonRegistro.Location = New-Object System.Drawing.Point(475, 140)
+    $buttonRegistro.Location = New-Object System.Drawing.Point(475, 150)
     $buttonRegistro.Size = New-Object System.Drawing.Size(200, 30)
     $buttonRegistro.Text = "Registrar"
     $form.add_FormClosing($handler_FormClosing)
@@ -522,6 +522,7 @@ if (Test-Path $global:databasePath) {
         foreach ($col in $dataGridView.Columns) {
             $col.SortMode = [System.Windows.Forms.DataGridViewColumnSortMode]::NotSortable
         }
+        $dataGridView.FirstDisplayedScrollingRowIndex = $dataGridView.Rows.Count - 1
     })
 
     # Show the form
