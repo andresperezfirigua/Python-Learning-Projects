@@ -3,6 +3,7 @@ import random
 
 SCREEN_DIMENSIONS = [-280, 280]
 
+
 class Food(Turtle):
     def __init__(self):
         super().__init__()

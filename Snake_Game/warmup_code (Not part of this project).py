@@ -46,3 +46,28 @@
 # tom = Labrador()
 # print(tom.temperament)
 # tom.bark()
+
+# List and tuples slicing
+
+# # Define a list
+# my_list = [1, 2, 3, 4, 5]
+#
+# # Get the first three elements of the list
+# first_three = my_list[:3]
+# print(first_three)  # Output: [1, 2, 3]
+#
+# # Get the last two elements of the list
+# last_two = my_list[-2:]
+# print(last_two)  # Output: [4, 5]
+#
+# # Get the middle two elements of the list
+# middle_two = my_list[1:3]
+# print(middle_two)  # Output: [2, 3]
+#
+# # Get every other element of the list
+# every_other = my_list[::2]
+# print(every_other)  # Output: [1, 3, 5]
+#
+# # Reverse the list
+# reverse_list = my_list[::-1]
+# print(reverse_list)  # Output: [5, 4, 3, 2, 1]
