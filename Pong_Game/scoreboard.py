@@ -11,15 +11,15 @@ class Scoreboard(Turtle):
         self.score_player2 = 0
         self.penup()
         self.hideturtle()
-        self.goto(0, 270)
         self.speed(0)
         self.color("white")
         self.update_scoreboard()
-        self.draw_net()
 
     def update_scoreboard(self):
         self.clear()
+        self.goto(0, 270)
         self.write(f"{self.score_player1}       {self.score_player2}", False, align=ALIGNMENT, font=FONT)
+        self.draw_net()
 
     def draw_net(self):
         self.goto(0, 295)
@@ -32,4 +32,12 @@ class Scoreboard(Turtle):
                 self.penup()
             else:
                 self.pendown()
+        self.penup()
 
+    def increase_player_1_score(self):
+        self.score_player1 += 1
+        self.update_scoreboard()
+
+    def increase_player_2_score(self):
+        self.score_player2 += 1
+        self.update_scoreboard()
