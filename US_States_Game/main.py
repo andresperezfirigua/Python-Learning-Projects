@@ -15,6 +15,8 @@ states_to_learn = []
 
 while len(guessed_states) < 50:
     if answer_state == "Exit":
+        # Version with List Comprehension
+        # states_to_learn = [state for state in guessed_states if state not in guessed_states]
         for state in states:
             if state not in guessed_states:
                 states_to_learn.append(state)
