@@ -2,7 +2,7 @@ import requests
 import os
 import datetime as dt
 
-#|--------------------------------- Request for nutritionix exercise API  -------------------------------------------|#
+#|--------------------------------- Request for Nutritionix exercise API  -------------------------------------------|#
 
 # Credentials for nutritionix
 APP_ID = os.environ.get('APP_ID')
@@ -20,7 +20,7 @@ nutritionix_headers = {
     'Content-Type': 'application/json'
 }
 
-exercise_params = {
+nutritionix_params = {
     'query': user_input
     # 'gender':
     # 'weight_kg':
@@ -28,11 +28,11 @@ exercise_params = {
     # 'age':
 }
 
-exercise_response = requests.post(url=exercise_endpoint, json=exercise_params, headers=nutritionix_headers)
+exercise_response = requests.post(url=exercise_endpoint, json=nutritionix_params, headers=nutritionix_headers)
 
 print(exercise_response.json())
 
-#|--------------------------------- Request for sheety spreadsheet API -------------------------------------------|#
+#|--------------------------- Request for Sheety Google spreadsheet API -------------------------------------|#
 
 nutritionix_response = exercise_response.json()
 
