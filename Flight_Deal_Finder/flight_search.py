@@ -40,13 +40,14 @@ class FlightSearch:
             'date_to': DEP_LAST_DATE,
             'nights_in_dst_from': 7,
             'nights_in_dst_to': 10,
+            # 'one_for_city': 1,
             'curr': 'COP',
             'max_stopovers': 0,
             'vehicle_type': 'aircraft'
         }
 
         response = requests.get(url=search_endpoint, params=parameters, headers=self.headers)
-        print(response.status_code)
+        # print(response.status_code)
 
         try:
             cheapest_flight = response.json()['data'][0]
@@ -55,7 +56,7 @@ class FlightSearch:
             return None
 
         flight_data = FlightData(
-            price=cheapest_flight['price'],
+            price=int(cheapest_flight['price']),
             origin_city=cheapest_flight["route"][0]["cityFrom"],
             origin_airport=cheapest_flight["route"][0]["flyFrom"],
             destination_city=cheapest_flight["route"][0]["cityTo"],
@@ -64,16 +65,16 @@ class FlightSearch:
             return_date=cheapest_flight["route"][1]["local_departure"].split("T")[0]
         )
 
-        print(f'Departure: {flight_data.origin_city}\n'
-              f'Code: {flight_data.origin_airport}\n'
-              f'Destination: {flight_data.destination_city}\n'
-              f'Code: {flight_data.destination_airport}\n'
-              f'Nights in destination: {cheapest_flight["nightsInDest"]}\n'
-              f'From: {flight_data.out_date} to {flight_data.return_date}\n'
-              f'Price: ${int(flight_data.price)}\n'
-              )
-
-        print(f'Cantidad de vuelos encontrados para {flight_data.origin_city}: '
-              f'{len(response.json()["data"])}\n\n\n')
+        # print(f'Departure: {flight_data.origin_city}\n'
+        #       f'Code: {flight_data.origin_airport}\n'
+        #       f'Destination: {flight_data.destination_city}\n'
+        #       f'Code: {flight_data.destination_airport}\n'
+        #       f'Nights in destination: {cheapest_flight["nightsInDest"]}\n'
+        #       f'From: {flight_data.out_date} to {flight_data.return_date}\n'
+        #       f'Price: ${flight_data.price}\n'
+        #       )
+        #
+        # print(f'Cantidad de vuelos encontrados para {flight_data.destination_city}: '
+        #       f'{len(response.json()["data"])}\n\n\n')
 
         return flight_data

@@ -19,4 +19,15 @@ class DataManager:
                 'iataCode': iata_code
             }
         }
-        response = requests.put(url=f'{self.sheety_endpoint}/{row_id}', json=row_body, headers=self.headers)
+
+        requests.put(url=f'{self.sheety_endpoint}/{row_id}', json=row_body, headers=self.headers)
+
+    # Use in case the price column is missing values in the spreadsheet
+    def fill_price_column(self, row_id, flight_price):
+        row_body = {
+            'price': {
+                'lowestPrice': flight_price
+            }
+        }
+
+        requests.put(url=f'{self.sheety_endpoint}/{row_id}', json=row_body, headers=self.headers)
