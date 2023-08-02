@@ -10,17 +10,19 @@ DEP_START_DATE = TOMORROW.strftime('%d/%m/%Y')
 DATE_RANGE = dt.datetime.now() + dt.timedelta(days=180)
 DEP_LAST_DATE = DATE_RANGE.strftime('%d/%m/%Y')
 
+TEQUILA_ENDPOINT = 'https://api.tequila.kiwi.com'
+TEQUILA_API_KEY = os.environ.get('Flight_Deal_Finder_Tequila_Key')
+
 
 class FlightSearch:
     def __init__(self):
-        self.tequila_endpoint = 'https://api.tequila.kiwi.com'
         self.headers = {
-            'apikey': os.environ.get('Flight_Deal_Finder_Tequila_Key')
+            'apikey': TEQUILA_API_KEY
         }
 
     # /locations/query
     def find_iata_code(self, city_name):
-        location_endpoint = f'{self.tequila_endpoint}/locations/query'
+        location_endpoint = f'{TEQUILA_ENDPOINT}/locations/query'
         parameters = {
             'term': city_name,
             'location_types': 'city',
@@ -32,7 +34,7 @@ class FlightSearch:
         return response.json()['locations'][0]['code']
 
     def search_flights(self, destination):
-        search_endpoint = f'{self.tequila_endpoint}/v2/search'
+        search_endpoint = f'{TEQUILA_ENDPOINT}/v2/search'
         parameters = {
             'fly_from': DEPARTURE_LOCATION,
             'fly_to': destination,
@@ -54,27 +56,27 @@ class FlightSearch:
         except IndexError:
             print(f'No flight found for this destination {destination}\n\n\n')
             return None
+        else:
+            flight_data = FlightData(
+                price=int(cheapest_flight['price']),
+                origin_city=cheapest_flight["route"][0]["cityFrom"],
+                origin_airport=cheapest_flight["route"][0]["flyFrom"],
+                destination_city=cheapest_flight["route"][0]["cityTo"],
+                destination_airport=cheapest_flight["route"][0]["flyTo"],
+                out_date=cheapest_flight["route"][0]["local_departure"].split("T")[0],
+                return_date=cheapest_flight["route"][1]["local_departure"].split("T")[0]
+            )
 
-        flight_data = FlightData(
-            price=int(cheapest_flight['price']),
-            origin_city=cheapest_flight["route"][0]["cityFrom"],
-            origin_airport=cheapest_flight["route"][0]["flyFrom"],
-            destination_city=cheapest_flight["route"][0]["cityTo"],
-            destination_airport=cheapest_flight["route"][0]["flyTo"],
-            out_date=cheapest_flight["route"][0]["local_departure"].split("T")[0],
-            return_date=cheapest_flight["route"][1]["local_departure"].split("T")[0]
-        )
+            # print(f'Departure: {flight_data.origin_city}\n'
+            #       f'Code: {flight_data.origin_airport}\n'
+            #       f'Destination: {flight_data.destination_city}\n'
+            #       f'Code: {flight_data.destination_airport}\n'
+            #       f'Nights in destination: {cheapest_flight["nightsInDest"]}\n'
+            #       f'From: {flight_data.out_date} to {flight_data.return_date}\n'
+            #       f'Price: ${flight_data.price}\n'
+            #       )
+            #
+            # print(f'Cantidad de vuelos encontrados para {flight_data.destination_city}: '
+            #       f'{len(response.json()["data"])}\n\n\n')
 
-        # print(f'Departure: {flight_data.origin_city}\n'
-        #       f'Code: {flight_data.origin_airport}\n'
-        #       f'Destination: {flight_data.destination_city}\n'
-        #       f'Code: {flight_data.destination_airport}\n'
-        #       f'Nights in destination: {cheapest_flight["nightsInDest"]}\n'
-        #       f'From: {flight_data.out_date} to {flight_data.return_date}\n'
-        #       f'Price: ${flight_data.price}\n'
-        #       )
-        #
-        # print(f'Cantidad de vuelos encontrados para {flight_data.destination_city}: '
-        #       f'{len(response.json()["data"])}\n\n\n')
-
-        return flight_data
+            return flight_data
