@@ -1,5 +1,6 @@
 import requests
 import os
+import pprint
 import datetime as dt
 from flight_data import FlightData
 
@@ -42,7 +43,7 @@ class FlightSearch:
             'date_to': DEP_LAST_DATE,
             'nights_in_dst_from': 7,
             'nights_in_dst_to': 10,
-            # 'one_for_city': 1,
+            'one_for_city': 1,
             'curr': 'COP',
             'max_stopovers': 0,
             'vehicle_type': 'aircraft'
@@ -54,8 +55,43 @@ class FlightSearch:
         try:
             cheapest_flight = response.json()['data'][0]
         except IndexError:
-            print(f'No flight found for this destination {destination}\n\n\n')
-            return None
+            print(f'\nNo direct flights found for this destination {destination}\n\n\n')
+            parameters['max_stopovers'] = 2
+            response = requests.get(url=search_endpoint, params=parameters, headers=self.headers)
+            # pprint.pprint(response.json())
+
+            try:
+                cheapest_flight = response.json()['data'][0]
+
+            except:
+                print('\nNo flights found for this destination at all.')
+                return None
+
+            else:
+                flight_data = FlightData(
+                    price=int(cheapest_flight['price']),
+                    origin_city=cheapest_flight["cityFrom"],
+                    origin_airport=cheapest_flight["cityCodeFrom"],
+                    destination_city=cheapest_flight["cityTo"],
+                    destination_airport=cheapest_flight["cityCodeTo"],
+                    out_date=cheapest_flight["route"][0]["local_departure"].split("T")[0],
+                    return_date=cheapest_flight["route"][-1]["local_departure"].split("T")[0],
+                    stop_overs=1,
+                    via_city=cheapest_flight["route"][0]["cityTo"],
+                    number_of_days=cheapest_flight['nightsInDest']
+                )
+
+                # print(f'Departure: {flight_data.origin_city}\n'
+                #       f'Code: {flight_data.origin_airport}\n'
+                #       f'Destination: {flight_data.destination_city}\n'
+                #       f'Code: {flight_data.destination_airport}\n'
+                #       f'Nights in destination: {flight_data.number_of_days}\n'
+                #       f'From: {flight_data.out_date} to {flight_data.return_date}\n'
+                #       f'Price: ${flight_data.price}\n'
+                #       )
+
+                return flight_data
+
         else:
             flight_data = FlightData(
                 price=int(cheapest_flight['price']),
@@ -64,19 +100,17 @@ class FlightSearch:
                 destination_city=cheapest_flight["route"][0]["cityTo"],
                 destination_airport=cheapest_flight["route"][0]["flyTo"],
                 out_date=cheapest_flight["route"][0]["local_departure"].split("T")[0],
-                return_date=cheapest_flight["route"][1]["local_departure"].split("T")[0]
+                return_date=cheapest_flight["route"][1]["local_departure"].split("T")[0],
+                number_of_days=cheapest_flight['nightsInDest']
             )
 
             # print(f'Departure: {flight_data.origin_city}\n'
             #       f'Code: {flight_data.origin_airport}\n'
             #       f'Destination: {flight_data.destination_city}\n'
             #       f'Code: {flight_data.destination_airport}\n'
-            #       f'Nights in destination: {cheapest_flight["nightsInDest"]}\n'
+            #       f'Nights in destination: {flight_data.number_of_days}\n'
             #       f'From: {flight_data.out_date} to {flight_data.return_date}\n'
             #       f'Price: ${flight_data.price}\n'
             #       )
-            #
-            # print(f'Cantidad de vuelos encontrados para {flight_data.destination_city}: '
-            #       f'{len(response.json()["data"])}\n\n\n')
 
             return flight_data

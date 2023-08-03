@@ -11,9 +11,13 @@ class DataManager:
             'Authorization': SHEETY_API_KEY
         }
 
-    def get_spreadsheet_data(self):
+    def get_spreadsheet_price_data(self):
         response = requests.get(url=f'{SHEETY_ENDPOINT}/prices', headers=self.headers)
         return response.json()['prices']
+
+    def get_spreadsheet_user_data(self):
+        response = requests.get(url=f'{SHEETY_ENDPOINT}/users', headers=self.headers)
+        return response.json()['users']
 
     def edit_iata_column(self, row_id, iata_code):
         row_body = {

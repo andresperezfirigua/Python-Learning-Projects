@@ -1,4 +1,5 @@
 import os
+import smtplib
 from twilio.rest import Client
 
 ACCOUNT_SID = os.environ['TW_ACCOUNT_SID']
@@ -12,10 +13,8 @@ class NotificationManager:
         pass
         # self.client = Client(ACCOUNT_SID, AUTH_TOKEN)
 
-    def send_low_price_alert(self, flight):
-        message_text = f"Lower price found for {flight.destination_city} - {flight.destination_airport}!\n " \
-                       f"Only ${flight.price} from {flight.out_date} to {flight.return_date}."
-        print(message_text)
+    def send_sms_alert(self, message):
+        print(message)
 
         # TODO - Add Twilio authentication, free trial expired
 
@@ -27,3 +26,15 @@ class NotificationManager:
         # )
         #
         # print(message.sid)
+
+    def send_email_alert(self, destination_email, message):
+        email = 'Your email here'
+        password = 'Your app generated password here'
+        with smtplib.SMTP('smtp.gmail.com', port=587) as connection:
+            connection.starttls()
+            connection.login(user=email, password=password)
+            connection.sendmail(
+                from_addr=email,
+                to_addrs=destination_email,
+                msg=f'Subject:New Flight Deal! - Alert\n\n{message}'.encode('utf-8')
+            )
