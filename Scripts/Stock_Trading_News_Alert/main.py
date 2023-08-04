@@ -13,7 +13,7 @@ STOCK_PRICE_API_KEY = os.environ.get('STOCK_PRICE_API_KEY')
 NEWS_API_KEY = os.environ.get('NEWS_API_KEY')
 TW_ACCOUNT_SID = os.environ['TW_ACCOUNT_SID']
 TW_AUTH_TOKEN = os.environ['TW_AUTH_TOKEN']
-TW_PHONE_NUMBER = '+18146225203'
+TW_PHONE_NUMBER = 'Twilio phone number here'
 
 stock_price_endpoint = 'https://www.alphavantage.co/query'
 
@@ -72,7 +72,7 @@ if abs(percentage) > 3:
             .create(
                 body=article,
                 from_=TW_PHONE_NUMBER,
-                to='+573208638202'
+                to='Destination phone number here'
             )
 
         print(message.status)
