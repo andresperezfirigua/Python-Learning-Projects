@@ -1,4 +1,5 @@
 from bs4 import BeautifulSoup
+import requests
 
 with open('website.html', encoding='UTF-8') as file:
     contents = file.read()
@@ -36,3 +37,33 @@ print(company_url)
 
 headings = soup. select('.heading')
 print(headings)
+
+# ------------------------------- Scraping from a live website  ------------------------------------#
+
+response = requests.get('https://news.ycombinator.com/news')
+
+yc_web_page = response.text
+
+soup = BeautifulSoup(yc_web_page, 'html.parser')
+
+print(soup.title)
+
+article_text = soup.select_one(selector='.titleline a')
+
+print(article_text.getText())
+print(article_text.get('href'))
+
+score = soup.find(name='span', class_='score')
+print(score.getText())
+
+
+articles = soup.select(selector='.titleline a')
+
+for article in articles:
+    print(article.getText())
+    print(article.get('href'))
+
+scores = soup.findAll(name='span', class_='score')
+
+for score in scores:
+    print(score.getText())
