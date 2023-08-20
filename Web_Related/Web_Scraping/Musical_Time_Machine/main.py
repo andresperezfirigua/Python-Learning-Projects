@@ -1,31 +1,16 @@
-from bs4 import BeautifulSoup
 import datetime
-import requests
-
-songs = []
-
-day = 1
-
-months_dict = {
-    # 'March': 3,
-    # 'June': 6,
-    # 'September': 9,
-    'November': 11
-}
+from datamanager import DataManager
+from spotifyplaylist import SpotifyPlaylist
 
 year = int(input('Which year do you want to travel to? Type year in this format YYYY, eg: "2020":\n'))
 
-# Getting the top 40 songs from a specified year according to the Top 100 in Billboard
-for key, value in months_dict.items():
-    date = datetime.date(year=year, month=value, day=day)
-    response = requests.get(f'https://www.billboard.com/charts/hot-100/{date}')
+date = datetime.date(year=year, month=11, day=1)
 
-    soup = BeautifulSoup(response.text, 'html.parser')
-    titles = soup.select(selector='.pmc-paywall li > h3:first-child')
-    # titles = soup.select(selector='.pmc-paywall li > h3:first-child, li > h3:first-child + span')
+datamanager = DataManager(date)
 
-    for title in titles:
-        songs.append(title.getText().strip())
+datamanager.scrape_songs()
 
-# print(len(songs))
-# print(songs)
+songs = datamanager.songs
+
+spotify_playlist = SpotifyPlaylist()
+spotify_playlist.create_playlist(songs, date)
