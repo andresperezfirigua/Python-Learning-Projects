@@ -36,18 +36,20 @@ class SpotifyPlaylist:
             description=f'This playlist is made of the top 100 songs from year {date.year}'
         )
 
-        for song in songs[:15]:
+        for song in songs:
+            track = self.spotify.search(
+                q=f'track:{song["name"]} year:{date.year}',
+                type='track',
+                limit=1
+            )
+
             try:
-                track = self.spotify.search(q=f'track:{song} year:{date.year}', type='track', limit=1)
-            except:
-                print('Song not found')
+                track_uri = track['tracks']['items'][0]['uri']
+            except IndexError:
+                print(f'"{song["name"]}" by {song["artist"]} was not found in Spotify.')
             else:
-                try:
-                    track_uri = track['tracks']['items'][0]['uri']
-                except IndexError:
-                    print('No encontrado')
-                else:
-                    track_uri_list.append(track_uri)
-                    print(track_uri_list)
+                track_uri_list.append(track_uri)
 
         self.spotify.playlist_add_items(playlist_id=playlist['id'], items=track_uri_list)
+
+        print(f'{len(track_uri_list)} songs added to playlist')
