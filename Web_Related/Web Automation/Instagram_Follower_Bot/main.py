@@ -4,7 +4,7 @@ account = 'Account'
 
 instaBot = InstagramBot()
 instaBot.login()
-instaBot.find_followers(account)
-instaBot.follow()
+followers_list = instaBot.find_followers(account)
+instaBot.follow(followers_list)
 
 instaBot.driver.quit()

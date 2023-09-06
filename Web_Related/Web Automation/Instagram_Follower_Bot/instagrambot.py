@@ -20,5 +20,21 @@ class InstagramBot:
     def find_followers(self, account):
         self.driver.get(f'https://www.instagram.com/{account}/followers/')
 
-    def follow(self):
-        pass
+        time.sleep(5)
+
+        followers_list = self.driver.find_element(
+            By.CLASS_NAME,
+            '_aano'
+        )
+
+        follow_buttons = followers_list.find_elements(
+            By.CLASS_NAME,
+            '_acan _acap _acas _aj1-'
+        )
+
+        self.follow(follow_buttons)
+
+    def follow(self, followers):
+        for follower in followers:
+            follower.click()
+            time.sleep(1)
