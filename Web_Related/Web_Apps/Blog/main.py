@@ -1,5 +1,5 @@
 import requests
-from flask import Flask, render_template
+from flask import Flask, render_template, request
 
 app = Flask(__name__)
 
@@ -29,6 +29,11 @@ def post(post_id):
         if p['id'] == post_id:
             requested_post = p
     return render_template('post.html', post=requested_post)
+
+
+@app.route('/message', methods=['POST'])
+def receive_data():
+    return request.form
 
 
 if __name__ == "__main__":
