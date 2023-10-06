@@ -1,4 +1,5 @@
 import requests
+import email_service
 from flask import Flask, render_template, request
 
 app = Flask(__name__)
@@ -17,9 +18,12 @@ def about():
     return render_template('about.html')
 
 
-@app.route('/contact')
+@app.route('/contact', methods=['GET', 'POST'])
 def contact():
-    return render_template('contact.html')
+    if request.method == 'POST':
+        email_service.send_email(request.form)
+        return render_template('contact.html', sent=True)
+    return render_template('contact.html', sent=False)
 
 
 @app.route('/post/<int:post_id>')
@@ -29,11 +33,6 @@ def post(post_id):
         if p['id'] == post_id:
             requested_post = p
     return render_template('post.html', post=requested_post)
-
-
-@app.route('/message', methods=['POST'])
-def receive_data():
-    return request.form
 
 
 if __name__ == "__main__":
