@@ -1,9 +1,11 @@
 from flask import Flask, render_template, request
 from login_form import LoginForm
+from flask_bootstrap import Bootstrap5
 
 app = Flask(__name__)
+bootstrap = Bootstrap5(app)
 
-app.secret_key = 'Vsdkh34[]bd=(&$jJCssjv/%sb635'
+app.secret_key = 'Type any secret key here'
 
 
 @app.route("/")
@@ -15,7 +17,7 @@ def home():
 def login():
     login_info = {
         'email': 'admin@email.com',
-        'password': '12345678'
+        'password': 'test'
     }
     form = LoginForm()
     if form.validate_on_submit():
