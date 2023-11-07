@@ -12,6 +12,7 @@ app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///new_books_collection.db"
 
 db.init_app(app)
 
+
 # Create table
 class Book(db.Model):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
