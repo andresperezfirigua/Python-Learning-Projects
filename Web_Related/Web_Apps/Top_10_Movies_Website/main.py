@@ -1,10 +1,12 @@
 from flask import Flask, render_template, redirect, url_for, request
 from flask_bootstrap import Bootstrap5
-from flask_wtf import FlaskForm
-from wtforms import StringField, SubmitField
-from wtforms.validators import DataRequired
 from data_manager import db, Movie
+from rate_movie_form import RateMovieForm
+from add_movie_form import AddMovieForm
 import requests
+import os
+
+tmdb_key = os.environ.get('TMDB_Key')
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = '8BYkEfBA6O6donzWlSihBXox7C0sKR6b'
@@ -21,10 +23,47 @@ def home():
     return render_template('index.html', movies=all_movies)
 
 
+@app.route('/add', methods=['GET', 'POST'])
+def add():
+    headers = {
+        "accept": "application/json",
+        "Authorization": tmdb_key
+    }
+
+    add_form = AddMovieForm()
+    if add_form.validate_on_submit():
+        params = {
+            'query': add_form.title.data,
+        }
+        response = requests.get(url='https://api.themoviedb.org/3/search/movie', params=params, headers=headers)
+        return redirect(response.url)
+
+    return render_template('add.html', form=add_form)
+
+
 @app.route('/edit', methods=['GET', 'POST'])
 def edit():
+    edit_form = RateMovieForm()
+    movie_id = request.args.get('id')
+    movie_to_update = db.get_or_404(Movie, movie_id)
+    title = movie_to_update.title
 
-    return render_template('edit.html')
+    if edit_form.validate_on_submit():
+        movie_to_update.rating = edit_form.rating.data
+        movie_to_update.review = edit_form.review.data
+        db.session.commit()
+        return redirect(url_for('home'))
+
+    return render_template('edit.html', form=edit_form, title=title)
+
+
+@app.route('/delete')
+def delete():
+    movie_id = request.args.get('id')
+    movie_to_delete = db.get_or_404(Movie, movie_id)
+    db.session.delete(movie_to_delete)
+    db.session.commit()
+    return redirect(url_for('home'))
 
 
 if __name__ == '__main__':
