@@ -25,18 +25,14 @@ def home():
 
 @app.route('/add', methods=['GET', 'POST'])
 def add():
-    headers = {
-        "accept": "application/json",
-        "Authorization": tmdb_key
-    }
-
     add_form = AddMovieForm()
     if add_form.validate_on_submit():
         params = {
             'query': add_form.title.data,
+            'api_key': tmdb_key
         }
-        response = requests.get(url='https://api.themoviedb.org/3/search/movie', params=params, headers=headers)
-        return redirect(response.url)
+        response = requests.get(url='https://api.themoviedb.org/3/search/movie', params=params)
+        return render_template('select.html', movies=response.json()['results'])
 
     return render_template('add.html', form=add_form)
 

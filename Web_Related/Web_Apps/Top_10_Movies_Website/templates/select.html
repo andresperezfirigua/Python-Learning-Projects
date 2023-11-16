@@ -5,9 +5,15 @@
 {% block content %}
 <div class="container">
     <h1 class="heading">Select Movie</h1>
-  <p>
-    <a href="#"> MOVIE TITLE - MOVIE RELEASE DATE</a>
-  </p>
+    {% if not movies %}
+        <p>Couldn't find any movie with that name</p>
+    {% endif %}
+
+    {% for movie in movies %}
+        <p>
+            <a href="#">{{ movie.title }} - {{ movie.release_date }}</a>
+        </p>
+    {% endfor %}
 
 </div>
 {% endblock %}
