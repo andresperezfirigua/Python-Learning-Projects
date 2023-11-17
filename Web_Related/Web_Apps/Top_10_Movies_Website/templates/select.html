@@ -11,7 +11,7 @@
 
     {% for movie in movies %}
         <p>
-            <a href="#">{{ movie.title }} - {{ movie.release_date }}</a>
+            <a href="{{ url_for('search', id=movie.id) }}">{{ movie.title }} - {{ movie.release_date }}</a>
         </p>
     {% endfor %}
 

@@ -16,7 +16,6 @@ app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///movies.db"
 
 db.init_app(app)
 
-
 @app.route("/")
 def home():
     all_movies = list(db.session.execute(db.select(Movie).order_by(Movie.ranking)).scalars())
@@ -35,6 +34,30 @@ def add():
         return render_template('select.html', movies=response.json()['results'])
 
     return render_template('add.html', form=add_form)
+
+
+@app.route('/search')
+def search():
+    movie_id = request.args.get('id')
+    url = f'https://api.themoviedb.org/3/movie/{movie_id}'
+    params = {
+        'api_key': tmdb_key
+    }
+
+    selected_movie = requests.get(url=url, params=params).json()
+
+    with app.app_context():
+        new_movie = Movie(
+            title=selected_movie['title'],
+            year=int(selected_movie['release_date'].split('-')[0]),
+            description=selected_movie['overview'],
+            img_url=f"https://image.tmdb.org/t/p/original/{selected_movie['poster_path']}"
+        )
+
+        db.session.add(new_movie)
+        db.session.commit()
+
+    return redirect(url_for('home'))
 
 
 @app.route('/edit', methods=['GET', 'POST'])
@@ -67,17 +90,3 @@ if __name__ == '__main__':
         db.create_all()
 
     app.run(debug=True)
-
-# with app.app_context():
-        # new_movie = Movie(
-        #     title="Avatar The Way of Water",
-        #     year=2022,
-        #     description="Set more than a decade after the events of the first film, learn the story of the Sully family (Jake, Neytiri, and their kids), the trouble that follows them, the lengths they go to keep each other safe, the battles they fight to stay alive, and the tragedies they endure.",
-        #     rating=7.3,
-        #     ranking=9,
-        #     review="I liked the water.",
-        #     img_url="https://image.tmdb.org/t/p/w500/t6HIqrRAclMCA60NsSmeqe9RmNV.jpg"
-        # )
-        #
-        # db.session.add(new_movie)
-        # db.session.commit()
