@@ -16,9 +16,17 @@ app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///movies.db"
 
 db.init_app(app)
 
+
 @app.route("/")
 def home():
-    all_movies = list(db.session.execute(db.select(Movie).order_by(Movie.ranking)).scalars())
+    result = db.session.execute(db.select(Movie).order_by(Movie.rating)).scalars()
+    all_movies = result.all()
+
+    for i in range(len(all_movies)):
+        all_movies[i].ranking = len(all_movies) - i
+
+    db.session.commit()
+
     return render_template('index.html', movies=all_movies)
 
 
@@ -46,18 +54,17 @@ def search():
 
     selected_movie = requests.get(url=url, params=params).json()
 
-    with app.app_context():
-        new_movie = Movie(
-            title=selected_movie['title'],
-            year=int(selected_movie['release_date'].split('-')[0]),
-            description=selected_movie['overview'],
-            img_url=f"https://image.tmdb.org/t/p/original/{selected_movie['poster_path']}"
-        )
+    new_movie = Movie(
+        title=selected_movie['title'],
+        year=int(selected_movie['release_date'].split('-')[0]),
+        description=selected_movie['overview'],
+        img_url=f"https://image.tmdb.org/t/p/original/{selected_movie['poster_path']}"
+    )
 
-        db.session.add(new_movie)
-        db.session.commit()
+    db.session.add(new_movie)
+    db.session.commit()
 
-    return redirect(url_for('home'))
+    return redirect(url_for('edit', id=new_movie.id))
 
 
 @app.route('/edit', methods=['GET', 'POST'])
