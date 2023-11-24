@@ -1,6 +1,0 @@
-Bootstrap_Flask
-Flask
-flask_sqlalchemy
-Flask_WTF
-Requests
-WTForms
