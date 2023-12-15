@@ -45,9 +45,7 @@ def get_random_cafe():
     # random_cafe = rdm.choice(cafes)
     cafes = db.session.execute(db.select(Cafe)).scalars().all()
     random_cafe = random.choice(cafes)
-    print(random_cafe)
     # cafe = db.get_or_404(Cafe, random_cafe)
-    print(random_cafe.name)
     return jsonify(cafe=random_cafe.to_dict())
 
     # return jsonify(cafe={
@@ -63,6 +61,12 @@ def get_random_cafe():
     #     "can_take_calls": random_cafe.can_take_calls,
     #     "coffee_price": random_cafe.coffee_price
     # })
+
+
+@app.route('/all')
+def get_all_cafes():
+    all_cafes = db.session.execute(db.select(Cafe)).scalars().all()
+    return jsonify(cafe=[cafe.to_dict() for cafe in all_cafes])
 
 
 # HTTP POST - Create Record
