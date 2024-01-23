@@ -96,7 +96,7 @@ def add_cafe():
         has_wifi=bool(request.form.get('has_wifi')),
         has_sockets=bool(request.form.get('has_sockets')),
         can_take_calls=bool(request.form.get('can_take_calls')),
-        coffee_price=request.form.get('coffee_price')
+        coffee_price=f"£{request.form.get('coffee_price')}"
     )
 
     db.session.add(new_cafe)
@@ -107,21 +107,24 @@ def add_cafe():
 
 # HTTP PUT/PATCH - Update Record
 
+
 @app.route('/update-price/<cafe_id>', methods=['PATCH'])
 def update_cafe(cafe_id):
     cafe_to_update = db.get_or_404(Cafe, cafe_id)
     if not cafe_to_update:
+        request.args.clear()
         return jsonify(error={
             "Not Found": "Sorry, there's no such cafe."
         }), 404
 
+    #TODO: Work on 404 response, currently getting a URL not found HTML page instead of JSON response
+
     new_price = request.args.get('new_price')
-    cafe_to_update.coffee_price = f'${new_price}'
-    db.session.add(cafe_to_update)
+    cafe_to_update.coffee_price = f'£{new_price}'
     db.session.commit()
     return jsonify(response={
         "success": "The cafe has been updated."
-    })
+    }), 200
 
 
 # HTTP DELETE - Delete Record
