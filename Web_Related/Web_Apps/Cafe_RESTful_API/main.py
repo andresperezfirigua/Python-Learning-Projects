@@ -4,6 +4,8 @@ import random
 
 app = Flask(__name__)
 
+API_KEY = 'TopSecretAPIKey'
+
 # Connect to Database
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///cafes.db'
 db = SQLAlchemy()
@@ -108,16 +110,14 @@ def add_cafe():
 # HTTP PUT/PATCH - Update Record
 
 
-@app.route('/update-price/<cafe_id>', methods=['PATCH'])
+@app.route('/update-price/<int:cafe_id>', methods=['PATCH'])
 def update_cafe(cafe_id):
-    cafe_to_update = db.get_or_404(Cafe, cafe_id)
+    # cafe_to_update = db.get_or_404(Cafe, cafe_id)
+    cafe_to_update = db.session.get(Cafe, cafe_id)
     if not cafe_to_update:
-        request.args.clear()
         return jsonify(error={
             "Not Found": "Sorry, there's no such cafe."
         }), 404
-
-    #TODO: Work on 404 response, currently getting a URL not found HTML page instead of JSON response
 
     new_price = request.args.get('new_price')
     cafe_to_update.coffee_price = f'£{new_price}'
@@ -128,6 +128,28 @@ def update_cafe(cafe_id):
 
 
 # HTTP DELETE - Delete Record
+
+
+@app.route('/report-closed/<int:cafe_id>', methods=['DELETE'])
+def delete_cafe(cafe_id):
+    user_api_key = request.args.get('api_key')
+    if user_api_key == API_KEY:
+        cafe_to_delete = db.session.get(Cafe, cafe_id)
+        # cafe_to_delete = db.get_or_404(Cafe, cafe_id)
+        if not cafe_to_delete:
+            return jsonify(error={
+                "Not Found": "Sorry, the cafe you want to delete does not exist."
+            }), 404
+
+        db.session.delete(cafe_to_delete)
+        db.session.commit()
+        return jsonify(response={
+            "success": "The cafe has been deleted."
+        }), 200
+    else:
+        return jsonify(error={
+            "Forbidden": "Sorry, that's not allowed. Make sure you have the correct API key."
+        }), 403
 
 
 if __name__ == '__main__':
