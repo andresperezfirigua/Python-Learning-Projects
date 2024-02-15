@@ -1,4 +1,6 @@
-{% block content %} {% include "header.html" %}
+{% from 'bootstrap5/form.html' import render_form %}
+{% block content %}
+{% include "header.html" %}
 
 <!-- Page Header -->
 <header
@@ -24,7 +26,10 @@
   <div class="container">
     <div class="row">
       <div class="col-lg-8 col-md-10 mx-auto">
-        <!-- TODO:-Add CKEditor and render the form here -->
+        <!-- TODO:-Add CKEditor and render the form here. Done -->
+        {{ ckeditor.load(pkg_type="full") }}
+        {{ ckeditor.config(name="body") }}
+        {{ render_form(form=form, novalidate=True, button_map={"submit": "primary"}) }}
       </div>
     </div>
   </div>

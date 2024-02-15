@@ -3,16 +3,16 @@ from flask_bootstrap import Bootstrap5
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 from sqlalchemy import Integer, String, Text
-from flask_wtf import FlaskForm
-from wtforms import StringField, SubmitField
-from wtforms.validators import DataRequired, URL
-from flask_ckeditor import CKEditor, CKEditorField
 from datetime import date
+from new_post_form import NewPostForm
+from flask_ckeditor import CKEditor
 
 app = Flask(__name__)
+
 app.config['SECRET_KEY'] = '8BYkEfBA6O6donzWlSihBXox7C0sKR6b'
 Bootstrap5(app)
 
+ckeditor = CKEditor(app)
 
 # CREATE DATABASE
 class Base(DeclarativeBase):
@@ -56,7 +56,25 @@ def show_post(post_id):
     return render_template("post.html", post=requested_post)
 
 
-# TODO: add_new_post() to create a new blog post
+# TODO: add_new_post() to create a new blog post. Done
+@app.route('/new-post', methods=['GET', 'POST'])
+def add_new_post():
+    form = NewPostForm()
+    post_date = date.today()
+    if form.validate_on_submit():
+        new_post = BlogPost(
+            title=form.title.data,
+            subtitle=form.subtitle.data,
+            date=post_date.strftime("%B %d, %Y"),
+            body=form.body.data,
+            author=form.author.data,
+            img_url=form.img_url.data
+        )
+
+        db.session.add(new_post)
+        db.session.commit()
+        return redirect(url_for('get_all_posts'))
+    return render_template('make-post.html', form=form)
 
 # TODO: edit_post() to change an existing blog post
 
