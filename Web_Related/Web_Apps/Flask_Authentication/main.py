@@ -24,6 +24,7 @@ login_manager.init_app(app)
 
 login_manager.login_view = "login"
 
+
 # CREATE TABLE IN DB
 class User(UserMixin, db.Model):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
@@ -49,22 +50,28 @@ def load_user(user_id):
 @app.route('/register', methods=['GET', 'POST'])
 def register():
     if request.method == 'POST':
-        hashed_pwd = generate_password_hash(
-            password=request.form.get('password'),
-            method='pbkdf2:sha256',
-            salt_length=8
-        )
-        new_user = User(
-            name=request.form.get('name'),
-            email=request.form.get('email'),
-            password=hashed_pwd
-        )
+        email = request.form.get('email')
 
-        db.session.add(new_user)
-        db.session.commit()
+        if not db.session.query(db.exists().where(User.email == email)).scalar():
+            hashed_pwd = generate_password_hash(
+                password=request.form.get('password'),
+                method='pbkdf2:sha256',
+                salt_length=8
+            )
+            new_user = User(
+                name=request.form.get('name'),
+                email=email,
+                password=hashed_pwd
+            )
 
-        login_user(new_user)
-        return redirect(url_for('secrets'))
+            db.session.add(new_user)
+            db.session.commit()
+
+            login_user(new_user)
+            return redirect(url_for('secrets'))
+        else:
+            flash("Email already registered. Log in instead.")
+            return redirect(url_for('login'))
     return render_template("register.html")
 
 
@@ -76,9 +83,14 @@ def login():
 
         user = db.session.execute(db.select(User).where(User.email == email)).scalar()
 
-        if check_password_hash(user.password, password):
-            login_user(user)
-            return redirect(url_for('secrets'))
+        if user:
+            if check_password_hash(user.password, password):
+                login_user(user)
+                return redirect(url_for('secrets'))
+            else:
+                flash("Wrong password. Try again.")
+        else:
+            flash("This email is not associated with an account. Try again.")
     return render_template("login.html")
 
 
