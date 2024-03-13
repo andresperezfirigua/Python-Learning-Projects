@@ -39,7 +39,7 @@ with app.app_context():
 
 @app.route('/')
 def home():
-    return render_template("index.html")
+    return render_template("index.html", user=current_user)
 
 
 @login_manager.user_loader
@@ -72,7 +72,7 @@ def register():
         else:
             flash("Email already registered. Log in instead.")
             return redirect(url_for('login'))
-    return render_template("register.html")
+    return render_template("register.html", user=current_user)
 
 
 @app.route('/login', methods=['GET', 'POST'])
@@ -91,7 +91,7 @@ def login():
                 flash("Wrong password. Try again.")
         else:
             flash("This email is not associated with an account. Try again.")
-    return render_template("login.html")
+    return render_template("login.html", user=current_user)
 
 
 @app.route('/secrets')
