@@ -10,7 +10,7 @@ from sqlalchemy import Integer, String, Text
 from functools import wraps
 from werkzeug.security import generate_password_hash, check_password_hash
 # Import your forms from the forms.py
-from forms import CreatePostForm, RegisterForm
+from forms import CreatePostForm, RegisterForm, LoginForm
 
 
 app = Flask(__name__)
@@ -18,12 +18,17 @@ app.config['SECRET_KEY'] = '8BYkEfBA6O6donzWlSihBXox7C0sKR6b'
 ckeditor = CKEditor(app)
 Bootstrap5(app)
 
-# TODO: Configure Flask-Login
+# TODO: Configure Flask-Login - Done
+login_manager = LoginManager()
+login_manager.init_app(app)
 
+login_manager.login_view = "login"
 
 # CREATE DATABASE
 class Base(DeclarativeBase):
     pass
+
+
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///posts.db'
 db = SQLAlchemy(model_class=Base)
 db.init_app(app)
@@ -54,7 +59,12 @@ with app.app_context():
     db.create_all()
 
 
-# TODO: Use Werkzeug to hash the user's password when creating a new user.
+@login_manager.user_loader
+def load_user(user_id):
+    return db.get_or_404(User, user_id)
+
+
+# TODO: Use Werkzeug to hash the user's password when creating a new user. - Done
 @app.route('/register', methods=['GET', 'POST'])
 def register():
     register_form = RegisterForm()
@@ -76,6 +86,8 @@ def register():
             db.session.add(new_user)
             db.session.commit()
 
+            login_user(new_user)
+
             return redirect(url_for('get_all_posts'))
 
         else:
@@ -85,9 +97,24 @@ def register():
 
 
 # TODO: Retrieve a user from the database based on their email. 
-@app.route('/login')
+@app.route('/login', methods=['GET', 'POST'])
 def login():
-    return render_template("login.html")
+    login_form = LoginForm()
+    if login_form.validate_on_submit():
+        email = login_form.email.data
+        password = login_form.password.data
+
+        user = db.session.execute(db.select(User).where(User.email == email)).scalar()
+
+        if user:
+            if check_password_hash(user.password, password):
+                login_user(user)
+                return redirect(url_for('get_all_posts'))
+            else:
+                flash("Wrong password. Try again.")
+        else:
+            flash("This email is not associated with an account. Try again.")
+    return render_template("login.html", user=current_user, form=login_form)
 
 
 @app.route('/logout')

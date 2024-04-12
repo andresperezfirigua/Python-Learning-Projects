@@ -23,8 +23,8 @@
   <div class="container">
     <div class="row">
       <div class="col-lg-8 col-md-10 mx-auto">
-        <!--TODO: render your registration form here-->
-        {{ render_form(form=form, novalidate=True) }}
+        <!--TODO: render your registration form here - Done -->
+        {{ render_form(form=form, novalidate=True, button_map={"submit": "primary"}) }}
       </div>
     </div>
   </div>
