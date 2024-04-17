@@ -138,7 +138,7 @@ def show_post(post_id):
     return render_template("post.html", post=requested_post, user=current_user)
 
 
-# TODO: Use a decorator so only an admin user can create a new post
+# TODO: Use a decorator so only an admin user can create a new post - Done
 def admin_only(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
@@ -148,8 +148,8 @@ def admin_only(f):
     return decorated_function
 
 
-@app.route("/new-post", methods=["GET", "POST"])
 @admin_only
+@app.route("/new-post", methods=["GET", "POST"])
 def add_new_post():
     form = CreatePostForm()
     if form.validate_on_submit():
@@ -158,7 +158,7 @@ def add_new_post():
             subtitle=form.subtitle.data,
             body=form.body.data,
             img_url=form.img_url.data,
-            author=current_user,
+            author=form.author.data,  # Could be current_user.name
             date=date.today().strftime("%B %d, %Y")
         )
         db.session.add(new_post)
@@ -167,9 +167,9 @@ def add_new_post():
     return render_template("make-post.html", form=form, user=current_user)
 
 
-# TODO: Use a decorator so only an admin user can edit a post
-@app.route("/edit-post/<int:post_id>", methods=["GET", "POST"])
+# TODO: Use a decorator so only an admin user can edit a post - Done
 @admin_only
+@app.route("/edit-post/<int:post_id>", methods=["GET", "POST"])
 def edit_post(post_id):
     post = db.get_or_404(BlogPost, post_id)
     edit_form = CreatePostForm(
@@ -183,16 +183,16 @@ def edit_post(post_id):
         post.title = edit_form.title.data
         post.subtitle = edit_form.subtitle.data
         post.img_url = edit_form.img_url.data
-        post.author = current_user
+        post.author = post.author  # Could be current_user.name
         post.body = edit_form.body.data
         db.session.commit()
         return redirect(url_for("show_post", post_id=post.id))
     return render_template("make-post.html", form=edit_form, is_edit=True, user=current_user)
 
 
-# TODO: Use a decorator so only an admin user can delete a post
-@app.route("/delete/<int:post_id>")
+# TODO: Use a decorator so only an admin user can delete a post - Done
 @admin_only
+@app.route("/delete/<int:post_id>")
 def delete_post(post_id):
     post_to_delete = db.get_or_404(BlogPost, post_id)
     db.session.delete(post_to_delete)
