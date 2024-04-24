@@ -10,7 +10,7 @@ from sqlalchemy import Integer, String, Text, ForeignKey, INTEGER
 from functools import wraps
 from werkzeug.security import generate_password_hash, check_password_hash
 # Import your forms from the forms.py
-from forms import CreatePostForm, RegisterForm, LoginForm
+from forms import CreatePostForm, RegisterForm, LoginForm, CommentForm
 from typing import List
 
 
@@ -138,7 +138,8 @@ def get_all_posts():
 @app.route("/post/<int:post_id>")
 def show_post(post_id):
     requested_post = db.get_or_404(BlogPost, post_id)
-    return render_template("post.html", post=requested_post, user=current_user)
+    comment_form = CommentForm()
+    return render_template("post.html", post=requested_post, user=current_user, form=comment_form)
 
 
 # TODO: Use a decorator so only an admin user can create a new post - Done
