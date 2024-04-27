@@ -47,6 +47,7 @@ class BlogPost(db.Model):
     date: Mapped[str] = mapped_column(String(250), nullable=False)
     body: Mapped[str] = mapped_column(Text, nullable=False)
     img_url: Mapped[str] = mapped_column(String(250), nullable=False)
+    comments: Mapped[List["Comment"]] = relationship(back_populates="post")
 
 
 # TODO: Create a User table for all your registered users. - Done
@@ -57,6 +58,18 @@ class User(UserMixin, db.Model):
     email: Mapped[str] = mapped_column(String(100), unique=True)
     password: Mapped[str] = mapped_column(String(100))
     blog_posts: Mapped[List["BlogPost"]] = relationship(back_populates="author")
+    comments: Mapped[List["Comment"]] = relationship(back_populates="comment_author")
+
+
+# TODO: Create a Comment table for all your users' comments.
+class Comment(db.Model):
+    __tablename__ = "comments"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    author_id: Mapped[int] = mapped_column(ForeignKey("blog_users.id"))
+    comment_author: Mapped["User"] = relationship(back_populates="comments")
+    post_id: Mapped[int] = mapped_column(ForeignKey("blog_posts.id"))
+    post: Mapped["BlogPost"] = relationship(back_populates="comments")
+    text: Mapped[str] = mapped_column(Text, nullable=False)
 
 
 with app.app_context():
@@ -134,15 +147,26 @@ def get_all_posts():
     return render_template("index.html", all_posts=posts, user=current_user)
 
 
-# TODO: Allow logged-in users to comment on posts
-@app.route("/post/<int:post_id>")
+# TODO: Allow logged-in users to comment on posts - Done
+@app.route("/post/<int:post_id>", methods=['GET', 'POST'])
 def show_post(post_id):
     requested_post = db.get_or_404(BlogPost, post_id)
     comment_form = CommentForm()
+    if comment_form.validate_on_submit():
+        # TODO: Check if user is authenticated to submit comment
+        new_comment = Comment(
+            comment_author=current_user,
+            post=requested_post,
+            text=comment_form.comment.data
+        )
+        db.session.add(new_comment)
+        db.session.commit()
+        return redirect(url_for("show_post", post_id=requested_post.id))
     return render_template("post.html", post=requested_post, user=current_user, form=comment_form)
 
 
 # TODO: Use a decorator so only an admin user can create a new post - Done
+# TODO: Check decorator, it's not working !!!!!!!!!!!!
 def admin_only(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
