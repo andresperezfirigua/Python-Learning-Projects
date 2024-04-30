@@ -2,16 +2,16 @@ from datetime import date
 from flask import Flask, abort, render_template, redirect, url_for, flash
 from flask_bootstrap import Bootstrap5
 from flask_ckeditor import CKEditor
-# from flask_gravatar import Gravatar
 from flask_login import UserMixin, login_user, LoginManager, current_user, logout_user, AnonymousUserMixin
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy.orm import relationship, DeclarativeBase, Mapped, mapped_column
-from sqlalchemy import Integer, String, Text, ForeignKey, INTEGER
+from sqlalchemy import Integer, String, Text, ForeignKey
 from functools import wraps
 from werkzeug.security import generate_password_hash, check_password_hash
-# Import your forms from the forms.py
 from forms import CreatePostForm, RegisterForm, LoginForm, CommentForm
 from typing import List
+from urllib.parse import urlencode
+import hashlib
 
 
 app = Flask(__name__)
@@ -74,6 +74,21 @@ class Comment(db.Model):
 
 with app.app_context():
     db.create_all()
+
+
+def generate_gravatar_url(email):
+    email = email
+    default = 'wavatar'
+    size = 40
+
+    email_encoded = email.lower().strip().encode('utf-8')
+    email_hash = hashlib.sha256(email_encoded).hexdigest()
+
+    query_params = urlencode({'d': default, 's': str(size)})
+
+    gravatar_url = f'https://www.gravatar.com/avatar/{email_hash}?{query_params}'
+
+    return gravatar_url
 
 
 @login_manager.user_loader
@@ -153,7 +168,9 @@ def show_post(post_id):
     requested_post = db.get_or_404(BlogPost, post_id)
     comment_form = CommentForm()
     if comment_form.validate_on_submit():
-        # TODO: Check if user is authenticated to submit comment
+        if not current_user.is_authenticated:
+            flash("Please log in to comment.")
+            return redirect(url_for('login'))
         new_comment = Comment(
             comment_author=current_user,
             post=requested_post,
@@ -161,12 +178,14 @@ def show_post(post_id):
         )
         db.session.add(new_comment)
         db.session.commit()
-        return redirect(url_for("show_post", post_id=requested_post.id))
-    return render_template("post.html", post=requested_post, user=current_user, form=comment_form)
+    return render_template("post.html",
+                           post=requested_post,
+                           user=current_user,
+                           form=comment_form,
+                           gravatar_url=generate_gravatar_url)
 
 
 # TODO: Use a decorator so only an admin user can create a new post - Done
-# TODO: Check decorator, it's not working !!!!!!!!!!!!
 def admin_only(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
@@ -176,8 +195,8 @@ def admin_only(f):
     return decorated_function
 
 
-@admin_only
 @app.route("/new-post", methods=["GET", "POST"])
+@admin_only
 def add_new_post():
     form = CreatePostForm()
     if form.validate_on_submit():
@@ -196,8 +215,8 @@ def add_new_post():
 
 
 # TODO: Use a decorator so only an admin user can edit a post - Done
-@admin_only
 @app.route("/edit-post/<int:post_id>", methods=["GET", "POST"])
+@admin_only
 def edit_post(post_id):
     post = db.get_or_404(BlogPost, post_id)
     edit_form = CreatePostForm(
@@ -218,8 +237,8 @@ def edit_post(post_id):
 
 
 # TODO: Use a decorator so only an admin user can delete a post - Done
-@admin_only
 @app.route("/delete/<int:post_id>")
+@admin_only
 def delete_post(post_id):
     post_to_delete = db.get_or_404(BlogPost, post_id)
     db.session.delete(post_to_delete)
