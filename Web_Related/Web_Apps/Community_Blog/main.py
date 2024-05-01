@@ -1,5 +1,5 @@
 from datetime import date
-from flask import Flask, abort, render_template, redirect, url_for, flash
+from flask import Flask, abort, render_template, redirect, url_for, flash, request
 from flask_bootstrap import Bootstrap5
 from flask_ckeditor import CKEditor
 from flask_login import UserMixin, login_user, LoginManager, current_user, logout_user, AnonymousUserMixin
@@ -244,6 +244,15 @@ def delete_post(post_id):
     db.session.delete(post_to_delete)
     db.session.commit()
     return redirect(url_for('get_all_posts'))
+
+
+@app.route("/delete-comment/<int:comment_id>")
+def delete_comment(comment_id):
+    post_id = request.args.get('post_id')
+    comment_to_delete = db.get_or_404(Comment, comment_id)
+    db.session.delete(comment_to_delete)
+    db.session.commit()
+    return redirect(url_for('show_post', post_id=post_id))
 
 
 @app.route("/about")
