@@ -178,6 +178,7 @@ def show_post(post_id):
         )
         db.session.add(new_comment)
         db.session.commit()
+        comment_form.comment.data = ""
     return render_template("post.html",
                            post=requested_post,
                            user=current_user,
@@ -189,7 +190,9 @@ def show_post(post_id):
 def admin_only(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        if AnonymousUserMixin.is_anonymous or current_user.id != 1:
+        if not current_user.is_authenticated:
+            abort(403)
+        if current_user.id != 1:
             abort(403)
         return f(*args, **kwargs)
     return decorated_function
@@ -246,7 +249,23 @@ def delete_post(post_id):
     return redirect(url_for('get_all_posts'))
 
 
+# TODO: Use a decorator so only a user can delete their own comment -
+def delete_own_comment(f):
+    @wraps(f)
+    def decorated_function(comment_id, *args, **kwargs):
+        if not current_user.is_authenticated:
+            abort(403)
+
+        comment_to_delete = db.get_or_404(Comment, comment_id)
+        if current_user.id != comment_to_delete.comment_author.id:
+            abort(403)
+
+        return f(comment_id, *args, **kwargs)
+    return decorated_function
+
+
 @app.route("/delete-comment/<int:comment_id>")
+@delete_own_comment
 def delete_comment(comment_id):
     post_id = request.args.get('post_id')
     comment_to_delete = db.get_or_404(Comment, comment_id)
