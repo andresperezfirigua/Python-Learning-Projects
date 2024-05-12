@@ -12,10 +12,11 @@ from forms import CreatePostForm, RegisterForm, LoginForm, CommentForm
 from typing import List
 from urllib.parse import urlencode
 import hashlib
+import os
 
 
 app = Flask(__name__)
-app.config['SECRET_KEY'] = '8BYkEfBA6O6donzWlSihBXox7C0sKR6b'
+app.config['SECRET_KEY'] = os.environ.get('Flask_Key')
 ckeditor = CKEditor(app)
 Bootstrap5(app)
 
@@ -23,7 +24,7 @@ Bootstrap5(app)
 login_manager = LoginManager()
 login_manager.init_app(app)
 
-login_manager.login_view = "login"
+# login_manager.login_view = "login"
 
 
 # CREATE DATABASE
@@ -31,7 +32,7 @@ class Base(DeclarativeBase):
     pass
 
 
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///blog.db'
+app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DB_URI')
 db = SQLAlchemy(model_class=Base)
 db.init_app(app)
 
@@ -61,7 +62,7 @@ class User(UserMixin, db.Model):
     comments: Mapped[List["Comment"]] = relationship(back_populates="comment_author")
 
 
-# TODO: Create a Comment table for all your users' comments.
+# TODO: Create a Comment table for all your users' comments. - Done
 class Comment(db.Model):
     __tablename__ = "comments"
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
@@ -249,7 +250,7 @@ def delete_post(post_id):
     return redirect(url_for('get_all_posts'))
 
 
-# TODO: Use a decorator so only a user can delete their own comment -
+# TODO: Use a decorator so only a user can delete their own comment - Done
 def delete_own_comment(f):
     @wraps(f)
     def decorated_function(comment_id, *args, **kwargs):
@@ -285,4 +286,4 @@ def contact():
 
 
 if __name__ == "__main__":
-    app.run(debug=True, port=5002)
+    app.run(debug=False, port=5002)
